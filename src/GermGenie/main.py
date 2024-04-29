@@ -1,7 +1,7 @@
 import argparse
 import os
 
-from pipeline import EMU
+from GermGenie.pipeline import EMU
 
 
 def main():

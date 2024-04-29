@@ -1,0 +1,10 @@
+LICENSE
+README.md
+pyproject.toml
+src/GermGenie/main.py
+src/GermGenie/pipeline.py
+src/GermGenie.egg-info/PKG-INFO
+src/GermGenie.egg-info/SOURCES.txt
+src/GermGenie.egg-info/dependency_links.txt
+src/GermGenie.egg-info/entry_points.txt
+src/GermGenie.egg-info/top_level.txt

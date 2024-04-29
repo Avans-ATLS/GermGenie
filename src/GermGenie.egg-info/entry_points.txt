@@ -1,0 +1,2 @@
+[console_scripts]
+GermGenie = GermGenie.main:main
