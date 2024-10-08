@@ -138,6 +138,7 @@ class EMU:
             x="sample",
             y="abundance",
             color=list(df.columns)[1],
+            color_discrete_sequence=px.colors.qualitative.Dark24,
             title=f"Relative Abundances of {(list(df.columns)[1]).capitalize()}",
             labels={"sample": "Sample Name", "abundance": "Relative Abundance (%)"},
         )
