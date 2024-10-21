@@ -29,7 +29,7 @@ def main():
     parser.add_argument(
         "--threshold",
         "-T",
-        help="Percent abundance threshold. Abundances below threshold will be shown as 'other' (defaults to 1 percent)",
+        help="Percent abundance threshold. Abundances below threshold will be shown as 'other' (defaults to 1 percent). If used with --absolute_threshold, this will be the absolute threshold.",
         type=int,
         default=1,
     )
@@ -38,10 +38,15 @@ def main():
         help="Write abundances to tsv file (abundances.tsv)",
         action="store_true",
     )
+    parser.add_argument(
+        "--absolute_threshold",
+        help="Use absolute threshold instead of relative threshold",
+        action="store_true",
+    )
 
     args = parser.parse_args()
 
-    analysis = EMU(args.fastq, args.output, args.db, args.threads, args.threshold)
+    analysis = EMU(args.fastq, args.output, args.db, args.threads, args.threshold, args.absolute_threshold)
 
     if args.tsv:
         analysis.df.to_csv(

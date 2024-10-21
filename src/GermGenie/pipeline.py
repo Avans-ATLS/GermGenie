@@ -14,6 +14,7 @@ class EMU:
         db: str,
         threads: int = 2,
         threshold: int = 1,
+        abs_threshold: bool = False,
     ) -> None:
         """Run EMU on samples, write barplots
 
@@ -30,6 +31,7 @@ class EMU:
         self.t: int = threads
         self.db: str = db
         self.threshold: int = threshold
+        self.absolute_threshold: bool = abs_threshold
         self.assignment: dict[str, list] = {
             "sample": [],
             "assigned": [],
@@ -53,12 +55,15 @@ class EMU:
             self.run_emu(fastq)
         # merge emu results
         self.df: pd.DataFrame = self.merge_results()
-        # plot species
-        fig = self.plot(self.species_data())
-        fig.write_html(os.path.join(self.output, "species_bar.html"))
-        # plot genus
-        fig = self.plot(self.genus_data())
-        fig.write_html(os.path.join(self.output, "genus_bar.html"))
+        if self.absolute_threshold:
+            self.plot(self.absolute_read_filter()).write_html(os.path.join(self.output, f"species_bar_threshold_{self.threshold}.html"))
+        else:
+            # plot species
+            fig = self.plot(self.species_data())
+            fig.write_html(os.path.join(self.output, "species_bar.html"))
+            # plot genus
+            fig = self.plot(self.genus_data())
+            fig.write_html(os.path.join(self.output, "genus_bar.html"))
 
         # write table of assigned/unassigned reads
         pd.DataFrame(self.assignment).to_csv(
@@ -99,7 +104,7 @@ class EMU:
         df = pd.DataFrame(columns=["sample", "species", "genus", "abundance"])
         for tsv in emu_results:
             # append data to dataframe
-            name = tsv.split("/")[-1].split("_")[0]
+            name = "_".join(tsv.split("/")[-1].split("_")[:-1])
             tmpdf = process_file(tsv)
             tmpdf["sample"] = name
             df = pd.concat([df, tmpdf])
@@ -131,7 +136,25 @@ class EMU:
         genus_df = genus_df.groupby(["sample", "genus"]).sum().reset_index()
 
         return genus_df
+    
+    def absolute_read_filter(self, rank: str = 'species'):
+        """Filter out species with less than a certain number of reads
 
+        Args:
+            df (pd.DataFrame): DataFrame containing abundance data
+            threshold (int): Minimum number of reads for a species to be included in the plot
+            rank (str, optional): Taxonomic rank to filter. Defaults to 'species'.
+        """
+        # grab relevant rank
+        df = self.df.drop('genus', axis=1)
+        # filter out species with less than threshold reads
+        df['reads'] = df.apply(lambda x: x['abundance'] * int(self.assignment['assigned'][self.assignment['sample'].index(x['sample'])]), axis=1)
+        df.loc[
+            df["reads"] < self.threshold, rank
+        ] = f"Other {rank} < {self.threshold} reads"
+        df = df.groupby(["sample", rank]).sum().reset_index()
+        return df 
+    
     def plot(self, df: pd.DataFrame):
         return px.bar(
             df,
