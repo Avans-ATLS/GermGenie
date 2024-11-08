@@ -18,7 +18,10 @@ def main():
         help="Path to directory to place results (created if not exists.)",
         type=str,
     )
-    parser.add_argument("db", help="Path to EMU database", type=str)
+    parser.add_argument(
+        "db", help="Path to EMU database", 
+        type=str
+        )
     parser.add_argument(
         "--threads",
         "-t",
@@ -37,11 +40,18 @@ def main():
         "--tsv",
         help="Write abundances to tsv file (abundances.tsv)",
         action="store_true",
+        default=False,
+    )
+    parser.add_argument(
+        "--nreads", "--nr",
+        action="store_true",
+        default=False,
+        help="Visualize number of reads per sample in barplot",
     )
 
     args = parser.parse_args()
 
-    analysis = EMU(args.fastq, args.output, args.db, args.threads, args.threshold)
+    analysis = EMU(args.fastq, args.output, args.db, args.threads, args.threshold, args.nreads)
 
     if args.tsv:
         analysis.df.to_csv(

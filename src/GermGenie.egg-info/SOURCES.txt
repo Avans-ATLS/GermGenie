@@ -7,4 +7,5 @@ src/GermGenie.egg-info/PKG-INFO
 src/GermGenie.egg-info/SOURCES.txt
 src/GermGenie.egg-info/dependency_links.txt
 src/GermGenie.egg-info/entry_points.txt
+src/GermGenie.egg-info/requires.txt
 src/GermGenie.egg-info/top_level.txt
