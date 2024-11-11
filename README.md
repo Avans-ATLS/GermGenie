@@ -20,6 +20,7 @@ python -m pip install GermGenie
 # Usage
 ```bash
 usage: GermGenie [-h] [--threads THREADS] [--threshold THRESHOLD] [--tsv]
+                 [--nreads] [--subsample SUBSAMPLE]
                  fastq output db
 
 EMU wrapper for analyzing and plotting relative abundance from 16S data
@@ -40,6 +41,10 @@ optional arguments:
                         threshold will be shown as 'other' (defaults to 1
                         percent)
   --tsv                 Write abundances to tsv file (abundances.tsv)
+  --nreads, --nr        Visualize number of reads per sample in barplot
+  --subsample SUBSAMPLE, -s SUBSAMPLE
+                        Subsample fastq files to a specific number of reads.
+                        defaults to None (use all data)
 
 Developed by Daan Brackel & Sander Boden @ ATLS-Avans
 ```
