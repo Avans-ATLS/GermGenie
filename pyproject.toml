@@ -5,7 +5,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "GermGenie"
-version = "0.0.5"
+version = "0.0.6"
 authors = [
     {name="Sander Boden", email="s.boden1@avans.nl"},
     {name="Daan Brackel", email="dcj.brackel@student.avans.nl"},
