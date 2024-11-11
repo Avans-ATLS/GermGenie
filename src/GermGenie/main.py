@@ -48,10 +48,17 @@ def main():
         default=False,
         help="Visualize number of reads per sample in barplot",
     )
+    parser.add_argument(
+        "--subsample",
+        "-s",
+        help="Subsample fastq files to a specific number of reads. defaults to None (use all data)",
+        type=int,
+        default=None,
+    )
 
     args = parser.parse_args()
 
-    analysis = EMU(args.fastq, args.output, args.db, args.threads, args.threshold, args.nreads)
+    analysis = EMU(args.fastq, args.output, args.db, args.threads, args.threshold, args.nreads, args.subsample)
 
     if args.tsv:
         analysis.df.to_csv(

@@ -18,6 +18,7 @@ class EMU:
         threads: int = 2,
         threshold: int = 1,
         nreads: bool = False,
+        subsample: int = None
     ) -> None:
         
         """Run EMU on samples, write barplots
@@ -55,6 +56,16 @@ class EMU:
         if len(infiles) < 1:
             print("No input files found...")
             os.abort()
+        
+        # subsample (optionally)
+        if subsample:
+            os.makedirs(os.path.join(self.output, 'subsampled'), exist_ok=True)
+            for fastq in infiles:
+                name = fastq.split("/")[-1].split(".")[0]
+                out = os.path.join(self.output, 'subsampled', f"{name}.fastq.gz")
+                command = f"gunzip -c {fastq} | seqtk sample - {subsample} | gzip > {out}"
+                subprocess.run(command, shell=True)
+            infiles = glob.glob(os.path.join(self.output, 'subsampled', "*.fastq.gz"))
 
 
         # run emu on input files
