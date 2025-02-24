@@ -248,14 +248,48 @@ def main():
         default=None,
     )
 
-    # args = parser.parse_args()
+    args = parser.parse_args()
 
-    # analysis = EMU(args.fastq, args.output, args.db, args.threads, args.threshold, args.nreads, args.subsample)
-
-    # if args.tsv:
-    #     analysis.df.to_csv(
-    #         os.path.join(args.output, "abundances.tsv"), sep="\t", index=False
-    #     )
+    # instantiate assignments
+    assignments = ReadAssignment([], [], [])
+    
+    # Create output directories
+    emu_dir: str = create_output_dirs(args.output, args.subsample)
+    
+    # Find input files
+    infiles: list[str] = find_input_files(args.fastq)
+    
+    # Subsample fastq files
+    if args.subsample:
+        infiles = [subsample_fastq(args.subsample, f, os.path.join(args.output, "subsample")) for f in infiles]
+    
+    # Run EMU on fastq files
+    for f in infiles:
+        emu_stdout = run_emu(f, args.db, args.threads, emu_dir)
+        assignments.add(f, emu_stdout)
+    
+    # Count reads
+    if args.nreads:
+        readcounts = {get_name(f): count_reads(f) for f in infiles}
+    
+    # Concatenate results
+    df = concatenate_results(emu_dir)
+    
+    # Add read counts
+    if args.nreads:
+        df["reads"] = df.apply(lambda x: readcounts[x["sample"]], axis=1)
+        
+    # Parse data
+    df = parse_abundances(df, args.threshold, 'species')
+    
+    # Plot data
+    fig = plot(df)
+    fig.write_html(os.path.join(args.output, "relative_abundances.html"))
+        
+    if args.tsv:
+        df.to_csv(
+            os.path.join(args.output, "abundances.tsv"), sep="\t", index=False
+        )
 
 
 if __name__ == "__main__":
