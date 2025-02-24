@@ -3,17 +3,17 @@ import os
 import glob
 import subprocess
 from typing import Literal
-from GermGenie.pipeline import EMU
 from plotly import express as px
 from plotly import graph_objects as go
 import gzip
 
 import pandas as pd
-from Bio import SeqIO
+
 
 def get_name(fastq: str) -> str:
     """Get the name of a file"""
     return os.path.basename(fastq).split(".")[0]
+
 
 def create_output_dirs(output_dir: str, subsample: bool = False) -> str:
     """Create output directories
@@ -26,14 +26,15 @@ def create_output_dirs(output_dir: str, subsample: bool = False) -> str:
         str: Path to emu directory
     """
     emu_dir: str = os.path.join(output_dir, "emu")
-    
+
     if not os.path.exists(output_dir):
         os.mkdir(output_dir)
         os.mkdir(emu_dir)
         if subsample:
             os.mkdir(os.path.join(output_dir, "subsample"))
-    
+
     return emu_dir
+
 
 def find_input_files(input_dir: str) -> list[str]:
     """Find input fastq.gz files in a directory
@@ -44,14 +45,15 @@ def find_input_files(input_dir: str) -> list[str]:
     Returns:
         list[str]: List of fastq.gz files
     """
-    infiles: list[str] = glob.glob(os.path.join(input_dir, "*.gz"))    
+    infiles: list[str] = glob.glob(os.path.join(input_dir, "*.gz"))
     if len(infiles) < 1:
-        print("No input files found...") # TODO: replace with logging
+        print("No input files found...")  # TODO: replace with logging
         os.abort()
     else:
         return infiles
-    
-def subsample_fastq(nreads: int, fastq: str, outdir: str) -> str|None:
+
+
+def subsample_fastq(nreads: int, fastq: str, outdir: str) -> str | None:
     """Subsample a fastq file
 
     Args:
@@ -64,15 +66,32 @@ def subsample_fastq(nreads: int, fastq: str, outdir: str) -> str|None:
     """
     name: str = get_name(fastq)
     out: str = os.path.join(outdir, f"{name}.fastq.gz")
-        
+
     try:
-        subprocess.run(['gunzip', '-c', fastq, '|', 'seqtk', 'sample', '-', nreads, '|', 'gzip', '>', out], shell=True)
+        subprocess.run(
+            [
+                "gunzip",
+                "-c",
+                fastq,
+                "|",
+                "seqtk",
+                "sample",
+                "-",
+                nreads,
+                "|",
+                "gzip",
+                ">",
+                out,
+            ],
+            shell=True,
+        )
         return out
     except subprocess.CalledProcessError as e:
-        print(f"{e}") # TODO: replace with logging
-        return None    
+        print(f"{e}")  # TODO: replace with logging
+        return None
 
-def run_emu(fastq: str, db: str, threads: int, output_dir: str) -> str|None:
+
+def run_emu(fastq: str, db: str, threads: int, output_dir: str) -> str | None:
     """Run EMU on a fastq file
 
     Args:
@@ -85,28 +104,43 @@ def run_emu(fastq: str, db: str, threads: int, output_dir: str) -> str|None:
         str|None: stdout from EMU, or None if an error occurred
     """
     name: str = get_name(fastq)
-    
+
     try:
         stdout = subprocess.check_output(
-        ["emu", "abundance", fastq, '--db', db, '--threads', threads, '--output-dir', output_dir, '--output-basename', name],
-        shell=True, text=True, stderr=subprocess.PIPE
-    )
+            [
+                "emu",
+                "abundance",
+                fastq,
+                "--db",
+                db,
+                "--threads",
+                threads,
+                "--output-dir",
+                output_dir,
+                "--output-basename",
+                name,
+            ],
+            shell=True,
+            text=True,
+            stderr=subprocess.PIPE,
+        )
     except subprocess.CalledProcessError as e:
-        print(f'Error processing {name}') # TODO: replace with logging
+        print(f"Error processing {name}")  # TODO: replace with logging
         print(e)
         print(e.stderr)
         return None
-    
+
     return stdout
-        
+
 
 class ReadAssignment:
-    """Class for storing read assignments from emu stdout"""	
+    """Class for storing read assignments from emu stdout"""
+
     def __init__(self):
         self.sample: list[str]
         self.assigned: list[int]
         self.unassigned: list[int]
-    
+
     def add(self, filename, stdout: str) -> None:
         """Add a read assignment from emu stdout
 
@@ -116,17 +150,18 @@ class ReadAssignment:
             unassigned (str): Number of unassigned reads
         """
         self.sample.append(get_name(filename))
-        self.assigned.append(int(stdout.split('\n')[1].split(' ')[-1]))
-        self.unassigned.append(int(stdout.split('\n')[0].split(' ')[-1]))
-    
+        self.assigned.append(int(stdout.split("\n")[1].split(" ")[-1]))
+        self.unassigned.append(int(stdout.split("\n")[0].split(" ")[-1]))
+
     def get_dict(self) -> dict[str, list]:
         """Get data as a dictionary"""
         return {
             "sample": self.sample,
             "assigned": self.assigned,
-            "unassigned": self.unassigned
+            "unassigned": self.unassigned,
         }
-        
+
+
 def count_reads(fastq: str) -> int:
     """Count the number of reads in a fastq file
 
@@ -140,6 +175,7 @@ def count_reads(fastq: str) -> int:
         line_count: int = sum(1 for _ in fq)
     read_count: int = line_count // 4
     return read_count
+
 
 def concatenate_results(output_dir: str) -> pd.DataFrame:
     """Concatenate abundance tsv files, add a column for the sample name
@@ -155,10 +191,13 @@ def concatenate_results(output_dir: str) -> pd.DataFrame:
         df: pd.DataFrame = pd.read_csv(file, sep="\t")
         df["sample"] = get_name(file)
         dfs.append(df)
-    
+
     return pd.concat(dfs)
-        
-def parse_abundances(df: pd.DataFrame, threshold: int, level: Literal['genus', 'species']) -> pd.DataFrame:
+
+
+def parse_abundances(
+    df: pd.DataFrame, threshold: int, level: Literal["genus", "species"]
+) -> pd.DataFrame:
     """Parse abundance data to remove low abundance taxa and group them as 'other'
 
     Args:
@@ -169,10 +208,13 @@ def parse_abundances(df: pd.DataFrame, threshold: int, level: Literal['genus', '
     Returns:
         pd.DataFrame: Parsed dataframe
     """
-    df = df[['sample', 'abundance', level]]
-    df = df[df['abundance'] > threshold]
-    df.loc[df['abundance'] < threshold, level] = f'Other {'genera' if level == 'genus' else level} < {threshold}%'
+    df = df[["sample", "abundance", level]]
+    df = df[df["abundance"] > threshold]
+    df.loc[
+        df["abundance"] < threshold, level
+    ] = f"Other {'genera' if level == 'genus' else level} < {threshold}%"
     return df
+
 
 def plot(df: pd.DataFrame) -> go.Figure:
     """Plot relative abundances
@@ -183,18 +225,21 @@ def plot(df: pd.DataFrame) -> go.Figure:
     Returns:
         go.Figure: Plotly figure
     """
-    
-    fig = go.Figure(px.bar(
-        df,
-        x="sample",
-        y="abundance",
-        color=list(df.columns)[1],
-        color_discrete_sequence=px.colors.qualitative.Dark24,
-        title=f"Relative Abundances of {(list(df.columns)[1]).capitalize()}",
-        labels={"sample": "Sample Name", "abundance": "Relative Abundance (%)"},
-    ))
-    
+
+    fig = go.Figure(
+        px.bar(
+            df,
+            x="sample",
+            y="abundance",
+            color=list(df.columns)[1],
+            color_discrete_sequence=px.colors.qualitative.Dark24,
+            title=f"Relative Abundances of {(list(df.columns)[1]).capitalize()}",
+            labels={"sample": "Sample Name", "abundance": "Relative Abundance (%)"},
+        )
+    )
+
     return fig
+
 
 def main():
     parser = argparse.ArgumentParser(
@@ -210,10 +255,7 @@ def main():
         help="Path to directory to place results (created if not exists.)",
         type=str,
     )
-    parser.add_argument(
-        "db", help="Path to EMU database", 
-        type=str
-        )
+    parser.add_argument("db", help="Path to EMU database", type=str)
     parser.add_argument(
         "--threads",
         "-t",
@@ -235,7 +277,8 @@ def main():
         default=False,
     )
     parser.add_argument(
-        "--nreads", "--nr",
+        "--nreads",
+        "--nr",
         action="store_true",
         default=False,
         help="Visualize number of reads per sample in barplot",
@@ -252,44 +295,45 @@ def main():
 
     # instantiate assignments
     assignments = ReadAssignment([], [], [])
-    
+
     # Create output directories
     emu_dir: str = create_output_dirs(args.output, args.subsample)
-    
+
     # Find input files
     infiles: list[str] = find_input_files(args.fastq)
-    
+
     # Subsample fastq files
     if args.subsample:
-        infiles = [subsample_fastq(args.subsample, f, os.path.join(args.output, "subsample")) for f in infiles]
-    
+        infiles = [
+            subsample_fastq(args.subsample, f, os.path.join(args.output, "subsample"))
+            for f in infiles
+        ]
+
     # Run EMU on fastq files
     for f in infiles:
         emu_stdout = run_emu(f, args.db, args.threads, emu_dir)
         assignments.add(f, emu_stdout)
-    
+
     # Count reads
     if args.nreads:
         readcounts = {get_name(f): count_reads(f) for f in infiles}
-    
+
     # Concatenate results
     df = concatenate_results(emu_dir)
-    
+
     # Add read counts
     if args.nreads:
         df["reads"] = df.apply(lambda x: readcounts[x["sample"]], axis=1)
-        
+
     # Parse data
-    df = parse_abundances(df, args.threshold, 'species')
-    
+    df = parse_abundances(df, args.threshold, "species")
+
     # Plot data
     fig = plot(df)
     fig.write_html(os.path.join(args.output, "relative_abundances.html"))
-        
+
     if args.tsv:
-        df.to_csv(
-            os.path.join(args.output, "abundances.tsv"), sep="\t", index=False
-        )
+        df.to_csv(os.path.join(args.output, "abundances.tsv"), sep="\t", index=False)
 
 
 if __name__ == "__main__":
