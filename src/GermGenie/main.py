@@ -3,7 +3,6 @@ import os
 import glob
 import subprocess
 from typing import Literal
-from dataclasses import dataclass
 from GermGenie.pipeline import EMU
 from plotly import express as px
 from plotly import graph_objects as go
@@ -100,24 +99,25 @@ def run_emu(fastq: str, db: str, threads: int, output_dir: str) -> str|None:
     
     return stdout
         
-@dataclass
+
 class ReadAssignment:
-    """Dataclass for storing read assignments"""	
-    sample: list[str]
-    assigned: list[int]
-    unassigned: list[int]
+    """Class for storing read assignments from emu stdout"""	
+    def __init__(self):
+        self.sample: list[str]
+        self.assigned: list[int]
+        self.unassigned: list[int]
     
-    def add(self, sample: str, assigned: str, unassigned: str) -> None:
-        """Add a read assignment
+    def add(self, filename, stdout: str) -> None:
+        """Add a read assignment from emu stdout
 
         Args:
             sample (str): Name of the sample
             assigned (str): Number of assigned reads
             unassigned (str): Number of unassigned reads
         """
-        self.sample.append(sample)
-        self.assigned.append(int(assigned))
-        self.unassigned.append(int(unassigned))
+        self.sample.append(get_name(filename))
+        self.assigned.append(int(stdout.split('\n')[1].split(' ')[-1]))
+        self.unassigned.append(int(stdout.split('\n')[0].split(' ')[-1]))
     
     def get_dict(self) -> dict[str, list]:
         """Get data as a dictionary"""
