@@ -45,17 +45,15 @@ def find_input_files(input_dir: str) -> List[str]:
     Returns:
         List[str]: List of fastq.gz files
     """
+    # Find all fastq.gz files
     infiles: List[str] = glob.glob(os.path.join(input_dir, "*.gz"))
     if len(infiles) < 1:
+        # If no files are found, abort
         print("No input files found...")  # TODO: replace with logging
         os.abort()
     else:
+        # Return list of files
         return infiles
-
-
-import os
-import subprocess
-
 
 def subsample_fastq(nreads: int, fastq: str, outdir: str) -> str:
     """Subsample a fastq file
@@ -68,9 +66,7 @@ def subsample_fastq(nreads: int, fastq: str, outdir: str) -> str:
     Returns:
         str: Path to subsampled fastq file, or input fastq path if an error occurred
     """
-    name: str = os.path.basename(fastq).split(".")[
-        0
-    ]  # Get the base name without extension
+    name: str = os.path.basename(fastq).split(".")[0] 
     out: str = os.path.join(outdir, f"{name}_subsampled.fastq.gz")
     pass
 
@@ -149,22 +145,6 @@ class ReadMapping:
             "unclassified_mapped": self.unclassified_mapped,
         }
 
-
-def count_reads(fastq: str) -> int:
-    """Count the number of reads in a fastq file
-
-    Args:
-        fq (str): path to fastq file
-
-    Returns:
-        int: number of reads
-    """
-    with gzip.open(fastq, "rt") as fq:
-        line_count: int = sum(1 for _ in fq)
-    read_count: int = line_count // 4
-    return read_count
-
-
 def concatenate_results(output_dir: str) -> pd.DataFrame:
     """Concatenate abundance tsv files, add a column for the sample name
 
@@ -175,11 +155,14 @@ def concatenate_results(output_dir: str) -> pd.DataFrame:
         pd.DataFrame: Concatenated dataframe
     """
     dfs: List[pd.DataFrame] = []
+    # Loop through all abundance files
     for file in glob.glob(os.path.join(output_dir, "*abundance.tsv")):
+        # Read file and add sample name
         df: pd.DataFrame = pd.read_csv(file, sep="\t", skipfooter=2, engine="python")
         df["sample"] = "_".join(get_name(file).split("_")[:-1])
+        # Append to list
         dfs.append(df)
-
+    # Concatenate all dataframes and return
     return pd.concat(dfs)
 
 
@@ -194,13 +177,15 @@ def parse_abundances(df: pd.DataFrame, threshold: int, level: str) -> pd.DataFra
     Returns:
         pd.DataFrame: Parsed dataframe
     """
+    # Grab relevant columns
     df = df[["sample", "abundance", level]]
+    # Convert abundance from fraction to percentage
     df = df.copy()
     df["abundance"] *= 100
     # Rename low abundance taxa to other
     other = f"Other {'genera' if level == 'genus' else level} < {threshold}%"
     df.loc[df["abundance"] < threshold, level] = other
-    # Group by sample and taxon
+    # Group by sample and taxon and sum percentages
     df = df.groupby(["sample", level]).sum().reset_index()
     return df
 
@@ -214,7 +199,6 @@ def plot(df: pd.DataFrame) -> go.Figure:
     Returns:
         go.Figure: Plotly figure
     """
-
     fig = go.Figure(
         px.bar(
             df,
@@ -232,7 +216,9 @@ def plot(df: pd.DataFrame) -> go.Figure:
 
 def plot_reads_mapped(readstats: ReadMapping) -> Tuple[go.Figure, pd.DataFrame]:
     """Plot number of reads mapped, unmapped, and unclassified"""
+    # Create dataframe from readstats object
     stats = pd.DataFrame(readstats.to_dict())
+    # Melt dataframe into longform
     stats = stats.melt(id_vars="sample", var_name="status", value_name="reads")
     fig = px.bar(
         stats,
@@ -255,6 +241,7 @@ def main(args: argparse.Namespace) -> None:
 
     # Find input files
     infiles: List[str] = find_input_files(args.fastq)
+    print(f'Found {len(infiles)} input files')
 
     # Subsample fastq files
     if args.subsample:
@@ -272,9 +259,11 @@ def main(args: argparse.Namespace) -> None:
         else:
             readstats.add(get_name(f), emu_stdout)
 
+    # Plot read mapping statistics
     if args.nreads:
         fig, readsdf = plot_reads_mapped(readstats)
         fig.write_html(os.path.join(args.output, "read_mapping.html"))
+        # Write to tsv
         if args.tsv:
             readsdf.pivot(
             index="sample",
@@ -285,10 +274,6 @@ def main(args: argparse.Namespace) -> None:
     # Concatenate results
     df = concatenate_results(emu_dir)
 
-    # Add read counts TODO: separate from abundance data and create separate plot
-    # if args.nreads:
-    #     df["reads"] = df.apply(lambda x: readcounts[x["sample"]], axis=1)
-
     # Parse data
     df = parse_abundances(df, args.threshold, "species")
 
@@ -296,8 +281,11 @@ def main(args: argparse.Namespace) -> None:
     fig = plot(df)
     fig.write_html(os.path.join(args.output, "relative_abundances.html"))
 
+    # Write to tsv
     if args.tsv:
         df.to_csv(os.path.join(args.output, "abundances.tsv"), sep="\t", index=False)
+        
+    print("Done!")
         
 
 
