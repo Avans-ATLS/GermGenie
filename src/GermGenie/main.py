@@ -2,7 +2,7 @@ import argparse
 import os
 import glob
 import subprocess
-from typing import Literal
+from typing import List, Dict, Tuple
 from plotly import express as px
 from plotly import graph_objects as go
 import gzip
@@ -36,16 +36,16 @@ def create_output_dirs(output_dir: str, subsample: bool = False) -> str:
     return emu_dir
 
 
-def find_input_files(input_dir: str) -> list[str]:
+def find_input_files(input_dir: str) -> List[str]:
     """Find input fastq.gz files in a directory
 
     Args:
         input_dir (str): Path to directory containing fastq.gz files
 
     Returns:
-        list[str]: List of fastq.gz files
+        List[str]: List of fastq.gz files
     """
-    infiles: list[str] = glob.glob(os.path.join(input_dir, "*.gz"))
+    infiles: List[str] = glob.glob(os.path.join(input_dir, "*.gz"))
     if len(infiles) < 1:
         print("No input files found...")  # TODO: replace with logging
         os.abort()
@@ -53,45 +53,27 @@ def find_input_files(input_dir: str) -> list[str]:
         return infiles
 
 
-def subsample_fastq(nreads: int, fastq: str, outdir: str) -> str | None:
-    """Subsample a fastq file
+import os
+import subprocess
 
+def subsample_fastq(nreads: int, fastq: str, outdir: str) -> str:
+    """Subsample a fastq file
+    
     Args:
         nreads (int): Number of reads to subsample
         fastq (str): Path to fastq file
         outdir (str): Path to output directory
-
+    
     Returns:
-        str|None: Path to subsampled fastq file, or None if an error occurred
+        str: Path to subsampled fastq file, or input fastq path if an error occurred
     """
-    name: str = get_name(fastq)
-    out: str = os.path.join(outdir, f"{name}.fastq.gz")
-
-    try:
-        subprocess.run(
-            [
-                "gunzip",
-                "-c",
-                fastq,
-                "|",
-                "seqtk",
-                "sample",
-                "-",
-                nreads,
-                "|",
-                "gzip",
-                ">",
-                out,
-            ],
-            shell=True,
-        )
-        return out
-    except subprocess.CalledProcessError as e:
-        print(f"{e}")  # TODO: replace with logging
-        return None
+    name: str = os.path.basename(fastq).split('.')[0]  # Get the base name without extension
+    out: str = os.path.join(outdir, f"{name}_subsampled.fastq.gz")
+    pass
 
 
-def run_emu(fastq: str, db: str, threads: int, output_dir: str) -> str | None:
+
+def run_emu(fastq: str, db: str, threads: int, output_dir: str) -> str:
     """Run EMU on a fastq file
 
     Args:
@@ -101,64 +83,68 @@ def run_emu(fastq: str, db: str, threads: int, output_dir: str) -> str | None:
         output_dir (str): Path to output directory
 
     Returns:
-        str|None: stdout from EMU, or None if an error occurred
+        str: stdout from emu, or empty string if an error occurred
     """
     name: str = get_name(fastq)
 
     try:
-        stdout = subprocess.check_output(
-            [
+        cmd = [
                 "emu",
                 "abundance",
-                fastq,
                 "--db",
                 db,
                 "--threads",
-                threads,
+                str(threads),
                 "--output-dir",
                 output_dir,
                 "--output-basename",
                 name,
-            ],
-            shell=True,
+                fastq,
+            ]
+        print(' '.join(cmd))
+        emu = subprocess.run(
+            cmd,
             text=True,
+            stdout=subprocess.PIPE,
             stderr=subprocess.PIPE,
+            check=True,
         )
     except subprocess.CalledProcessError as e:
         print(f"Error processing {name}")  # TODO: replace with logging
-        print(e)
         print(e.stderr)
-        return None
+        print(e.stdout)
+        return ''
 
-    return stdout
+    return emu.stdout
 
 
-class ReadAssignment:
-    """Class for storing read assignments from emu stdout"""
+class ReadMapping:
+    """Class for storing read statistics from emu stdout"""
 
     def __init__(self):
-        self.sample: list[str]
-        self.assigned: list[int]
-        self.unassigned: list[int]
+        self.sample: List[str] = []
+        self.mapped: List[int] = []
+        self.unmapped: List[int] = []
+        self.unclassified_mapped: List[int] = []
 
-    def add(self, filename, stdout: str) -> None:
-        """Add a read assignment from emu stdout
+    def add(self, sample, stdout: str) -> None:
+        """Add a read stats from emu stdout
 
         Args:
             sample (str): Name of the sample
-            assigned (str): Number of assigned reads
-            unassigned (str): Number of unassigned reads
         """
-        self.sample.append(get_name(filename))
-        self.assigned.append(int(stdout.split("\n")[1].split(" ")[-1]))
-        self.unassigned.append(int(stdout.split("\n")[0].split(" ")[-1]))
+        self.sample.append(sample)
+        self.unmapped.append(int(stdout.split("\n")[0].split(" ")[-1]))
+        self.mapped.append(int(stdout.split("\n")[1].split(" ")[-1]))
+        self.unclassified_mapped.append(int(stdout.split("\n")[2].split(" ")[-1]))
 
-    def get_dict(self) -> dict[str, list]:
+    def to_dict(self) -> Dict[str, List]:
         """Get data as a dictionary"""
         return {
             "sample": self.sample,
-            "assigned": self.assigned,
-            "unassigned": self.unassigned,
+            "mapped": self.mapped,
+            "unmapped": self.unmapped,
+            "unclassified_mapped": self.unclassified_mapped,
         }
 
 
@@ -186,33 +172,38 @@ def concatenate_results(output_dir: str) -> pd.DataFrame:
     Returns:
         pd.DataFrame: Concatenated dataframe
     """
-    dfs: list[pd.DataFrame] = []
+    dfs: List[pd.DataFrame] = []
     for file in glob.glob(os.path.join(output_dir, "*abundance.tsv")):
-        df: pd.DataFrame = pd.read_csv(file, sep="\t")
-        df["sample"] = get_name(file)
+        df: pd.DataFrame = pd.read_csv(file, sep="\t", skipfooter=2, engine="python")
+        df["sample"] = "_".join(get_name(file).split('_')[:-1])
         dfs.append(df)
 
     return pd.concat(dfs)
 
 
 def parse_abundances(
-    df: pd.DataFrame, threshold: int, level: Literal["genus", "species"]
+    df: pd.DataFrame, threshold: int, level: str
 ) -> pd.DataFrame:
     """Parse abundance data to remove low abundance taxa and group them as 'other'
 
     Args:
         df (pd.DataFrame): dataframe containing multi-sample abundance data
         threshold (int): Minimum abundance threshold
-        level (Literal['genus', 'species']): Taxonomic level to parse
+        level (str): Taxonomic level to parse ('genus' or 'species)
 
     Returns:
         pd.DataFrame: Parsed dataframe
     """
     df = df[["sample", "abundance", level]]
-    df = df[df["abundance"] > threshold]
+    df = df.copy()
+    df["abundance"] *= 100
+    # Rename low abundance taxa to other
+    other = f"Other {'genera' if level == 'genus' else level} < {threshold}%"
     df.loc[
         df["abundance"] < threshold, level
-    ] = f"Other {'genera' if level == 'genus' else level} < {threshold}%"
+    ] = other
+    # Group by sample and taxon
+    df = df.groupby(["sample", level]).sum().reset_index()
     return df
 
 
@@ -231,7 +222,7 @@ def plot(df: pd.DataFrame) -> go.Figure:
             df,
             x="sample",
             y="abundance",
-            color=list(df.columns)[1],
+            color='species',
             color_discrete_sequence=px.colors.qualitative.Dark24,
             title=f"Relative Abundances of {(list(df.columns)[1]).capitalize()}",
             labels={"sample": "Sample Name", "abundance": "Relative Abundance (%)"},
@@ -240,17 +231,30 @@ def plot(df: pd.DataFrame) -> go.Figure:
 
     return fig
 
+def plot_reads_mapped(readstats: ReadMapping) -> Tuple[go.Figure, pd.DataFrame]:
+    """Plot number of reads mapped, unmapped, and unclassified"""
+    stats = pd.DataFrame(readstats.to_dict())
+    stats = stats.melt(id_vars="sample", var_name="status", value_name="reads")
+    fig = px.bar(
+        stats,
+        x="sample",
+        y="reads",
+        color="status",
+        title="Read Mapping Statistics",
+        labels={"sample": "Sample Name", "reads": "Number of Reads"},
+    )
+    return fig, stats
 
 def main(args: argparse.Namespace) -> None:
     
     # instantiate assignments
-    assignments = ReadAssignment([], [], [])
+    readstats = ReadMapping()
 
     # Create output directories
-    emu_dir: str = create_output_dirs(args.output, args.subsample)
+    emu_dir: str = create_output_dirs(args.output, True if args.subsample else False)
 
     # Find input files
-    infiles: list[str] = find_input_files(args.fastq)
+    infiles: List[str] = find_input_files(args.fastq)
 
     # Subsample fastq files
     if args.subsample:
@@ -262,18 +266,22 @@ def main(args: argparse.Namespace) -> None:
     # Run EMU on fastq files
     for f in infiles:
         emu_stdout = run_emu(f, args.db, args.threads, emu_dir)
-        assignments.add(f, emu_stdout)
+        if emu_stdout == "":
+            print(f"Error processing {f}")  # TODO: replace with logging
+            continue
+        else:
+            readstats.add(get_name(f), emu_stdout)
 
-    # Count reads
     if args.nreads:
-        readcounts = {get_name(f): count_reads(f) for f in infiles}
+        fig, readsdf = plot_reads_mapped(readstats)
+        fig.write_html(os.path.join(args.output, "read_mapping.html"))
 
     # Concatenate results
     df = concatenate_results(emu_dir)
 
-    # Add read counts
-    if args.nreads:
-        df["reads"] = df.apply(lambda x: readcounts[x["sample"]], axis=1)
+    # Add read counts TODO: separate from abundance data and create separate plot
+    # if args.nreads:
+    #     df["reads"] = df.apply(lambda x: readcounts[x["sample"]], axis=1)
 
     # Parse data
     df = parse_abundances(df, args.threshold, "species")
@@ -284,6 +292,7 @@ def main(args: argparse.Namespace) -> None:
 
     if args.tsv:
         df.to_csv(os.path.join(args.output, "abundances.tsv"), sep="\t", index=False)
+        readsdf.pivot(index='sample', columns=['mapped', 'unmapped', 'unclassified_mapped'], values='reads').to_csv(os.path.join(args.output, "read_mapping.tsv"), sep="\t", index=False)
 
 
 if __name__ == "__main__":
@@ -323,18 +332,19 @@ if __name__ == "__main__":
     )
     parser.add_argument(
         "--nreads",
-        "--nr",
+        "-nr",
         action="store_true",
         default=False,
         help="Visualize number of reads per sample in barplot",
     )
-    parser.add_argument(
-        "--subsample",
-        "-s",
-        help="Subsample fastq files to a specific number of reads. defaults to None (use all data)",
-        type=int,
-        default=None,
-    )
+    # parser.add_argument( ## BROKEN :(
+    #     "--subsample",
+    #     "-s",
+    #     help="Subsample fastq files to a specific number of reads. defaults to None (use all data)",
+    #     type=int,
+    #     default=None,
+    # )
 
     args = parser.parse_args()
     main(args)
+    
