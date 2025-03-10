@@ -275,6 +275,12 @@ def main(args: argparse.Namespace) -> None:
     if args.nreads:
         fig, readsdf = plot_reads_mapped(readstats)
         fig.write_html(os.path.join(args.output, "read_mapping.html"))
+        if args.tsv:
+            readsdf.pivot(
+            index="sample",
+            columns=["status"],
+            values="reads",
+        ).to_csv(os.path.join(args.output, "read_mapping.tsv"), sep="\t")
 
     # Concatenate results
     df = concatenate_results(emu_dir)
@@ -292,11 +298,7 @@ def main(args: argparse.Namespace) -> None:
 
     if args.tsv:
         df.to_csv(os.path.join(args.output, "abundances.tsv"), sep="\t", index=False)
-        readsdf.pivot(
-            index="sample",
-            columns=["mapped", "unmapped", "unclassified_mapped"],
-            values="reads",
-        ).to_csv(os.path.join(args.output, "read_mapping.tsv"), sep="\t", index=False)
+        
 
 
 if __name__ == "__main__":
@@ -341,13 +343,13 @@ if __name__ == "__main__":
         default=False,
         help="Visualize number of reads per sample in barplot",
     )
-    # parser.add_argument( ## BROKEN :(
-    #     "--subsample",
-    #     "-s",
-    #     help="Subsample fastq files to a specific number of reads. defaults to None (use all data)",
-    #     type=int,
-    #     default=None,
-    # )
+    parser.add_argument( ## BROKEN :(
+        "--subsample",
+        "-s",
+        help="WARNING: DO NOT USE !!!", # Subsample fastq files to a specific number of reads. defaults to None (use all data)",
+        type=int,
+        default=None,
+    )
 
     args = parser.parse_args()
     main(args)
