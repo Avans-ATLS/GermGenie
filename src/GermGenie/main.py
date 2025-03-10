@@ -315,7 +315,11 @@ if __name__ == "__main__":
         help="Path to directory to place results (created if not exists.)",
         type=str,
     )
-    parser.add_argument("db", help="Path to EMU database", type=str)
+    parser.add_argument(
+        "db", 
+        help="Path to EMU database", 
+        type=str
+        )
     parser.add_argument(
         "--threads",
         "-t",
