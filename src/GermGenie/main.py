@@ -56,21 +56,23 @@ def find_input_files(input_dir: str) -> List[str]:
 import os
 import subprocess
 
+
 def subsample_fastq(nreads: int, fastq: str, outdir: str) -> str:
     """Subsample a fastq file
-    
+
     Args:
         nreads (int): Number of reads to subsample
         fastq (str): Path to fastq file
         outdir (str): Path to output directory
-    
+
     Returns:
         str: Path to subsampled fastq file, or input fastq path if an error occurred
     """
-    name: str = os.path.basename(fastq).split('.')[0]  # Get the base name without extension
+    name: str = os.path.basename(fastq).split(".")[
+        0
+    ]  # Get the base name without extension
     out: str = os.path.join(outdir, f"{name}_subsampled.fastq.gz")
     pass
-
 
 
 def run_emu(fastq: str, db: str, threads: int, output_dir: str) -> str:
@@ -89,19 +91,19 @@ def run_emu(fastq: str, db: str, threads: int, output_dir: str) -> str:
 
     try:
         cmd = [
-                "emu",
-                "abundance",
-                "--db",
-                db,
-                "--threads",
-                str(threads),
-                "--output-dir",
-                output_dir,
-                "--output-basename",
-                name,
-                fastq,
-            ]
-        print(' '.join(cmd))
+            "emu",
+            "abundance",
+            "--db",
+            db,
+            "--threads",
+            str(threads),
+            "--output-dir",
+            output_dir,
+            "--output-basename",
+            name,
+            fastq,
+        ]
+        print(" ".join(cmd))
         emu = subprocess.run(
             cmd,
             text=True,
@@ -113,7 +115,7 @@ def run_emu(fastq: str, db: str, threads: int, output_dir: str) -> str:
         print(f"Error processing {name}")  # TODO: replace with logging
         print(e.stderr)
         print(e.stdout)
-        return ''
+        return ""
 
     return emu.stdout
 
@@ -175,15 +177,13 @@ def concatenate_results(output_dir: str) -> pd.DataFrame:
     dfs: List[pd.DataFrame] = []
     for file in glob.glob(os.path.join(output_dir, "*abundance.tsv")):
         df: pd.DataFrame = pd.read_csv(file, sep="\t", skipfooter=2, engine="python")
-        df["sample"] = "_".join(get_name(file).split('_')[:-1])
+        df["sample"] = "_".join(get_name(file).split("_")[:-1])
         dfs.append(df)
 
     return pd.concat(dfs)
 
 
-def parse_abundances(
-    df: pd.DataFrame, threshold: int, level: str
-) -> pd.DataFrame:
+def parse_abundances(df: pd.DataFrame, threshold: int, level: str) -> pd.DataFrame:
     """Parse abundance data to remove low abundance taxa and group them as 'other'
 
     Args:
@@ -199,9 +199,7 @@ def parse_abundances(
     df["abundance"] *= 100
     # Rename low abundance taxa to other
     other = f"Other {'genera' if level == 'genus' else level} < {threshold}%"
-    df.loc[
-        df["abundance"] < threshold, level
-    ] = other
+    df.loc[df["abundance"] < threshold, level] = other
     # Group by sample and taxon
     df = df.groupby(["sample", level]).sum().reset_index()
     return df
@@ -222,7 +220,7 @@ def plot(df: pd.DataFrame) -> go.Figure:
             df,
             x="sample",
             y="abundance",
-            color='species',
+            color="species",
             color_discrete_sequence=px.colors.qualitative.Dark24,
             title=f"Relative Abundances of {(list(df.columns)[1]).capitalize()}",
             labels={"sample": "Sample Name", "abundance": "Relative Abundance (%)"},
@@ -230,6 +228,7 @@ def plot(df: pd.DataFrame) -> go.Figure:
     )
 
     return fig
+
 
 def plot_reads_mapped(readstats: ReadMapping) -> Tuple[go.Figure, pd.DataFrame]:
     """Plot number of reads mapped, unmapped, and unclassified"""
@@ -245,8 +244,9 @@ def plot_reads_mapped(readstats: ReadMapping) -> Tuple[go.Figure, pd.DataFrame]:
     )
     return fig, stats
 
+
 def main(args: argparse.Namespace) -> None:
-    
+
     # instantiate assignments
     readstats = ReadMapping()
 
@@ -292,7 +292,11 @@ def main(args: argparse.Namespace) -> None:
 
     if args.tsv:
         df.to_csv(os.path.join(args.output, "abundances.tsv"), sep="\t", index=False)
-        readsdf.pivot(index='sample', columns=['mapped', 'unmapped', 'unclassified_mapped'], values='reads').to_csv(os.path.join(args.output, "read_mapping.tsv"), sep="\t", index=False)
+        readsdf.pivot(
+            index="sample",
+            columns=["mapped", "unmapped", "unclassified_mapped"],
+            values="reads",
+        ).to_csv(os.path.join(args.output, "read_mapping.tsv"), sep="\t", index=False)
 
 
 if __name__ == "__main__":
@@ -347,4 +351,3 @@ if __name__ == "__main__":
 
     args = parser.parse_args()
     main(args)
-    

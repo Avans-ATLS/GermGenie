@@ -18,9 +18,9 @@ class EMU:
         threads: int = 2,
         threshold: int = 1,
         nreads: bool = False,
-        subsample: int = None
+        subsample: int = None,
     ) -> None:
-        
+
         """Run EMU on samples, write barplots
 
         Args:
@@ -43,7 +43,7 @@ class EMU:
             "assigned": [],
             "unassigned": [],
         }
-        
+
         # create path for emu results
         self.emu_dir: str = os.path.join(self.output, "emu")
         # make output dirs
@@ -56,17 +56,18 @@ class EMU:
         if len(infiles) < 1:
             print("No input files found...")
             os.abort()
-        
+
         # subsample (optionally)
         if subsample:
-            os.makedirs(os.path.join(self.output, 'subsampled'), exist_ok=True)
+            os.makedirs(os.path.join(self.output, "subsampled"), exist_ok=True)
             for fastq in infiles:
                 name = fastq.split("/")[-1].split(".")[0]
-                out = os.path.join(self.output, 'subsampled', f"{name}.fastq.gz")
-                command = f"gunzip -c {fastq} | seqtk sample - {subsample} | gzip > {out}"
+                out = os.path.join(self.output, "subsampled", f"{name}.fastq.gz")
+                command = (
+                    f"gunzip -c {fastq} | seqtk sample - {subsample} | gzip > {out}"
+                )
                 subprocess.run(command, shell=True)
-            infiles = glob.glob(os.path.join(self.output, 'subsampled', "*.fastq.gz"))
-
+            infiles = glob.glob(os.path.join(self.output, "subsampled", "*.fastq.gz"))
 
         # run emu on input files
         for fastq in sorted(infiles):
@@ -74,13 +75,17 @@ class EMU:
         if self.nreads:
             self.readcounts = {}
             for fastq in sorted(infiles):
-                self.readcounts[fastq.split("/")[-1].split(".")[0]] = self.count_reads(fastq)
-                
+                self.readcounts[fastq.split("/")[-1].split(".")[0]] = self.count_reads(
+                    fastq
+                )
+
         # merge emu results
         self.df: pd.DataFrame = self.merge_results()
         # add nreads if true
         if self.nreads:
-            self.df["reads"] = self.df.apply(lambda x: self.readcounts[x["sample"]], axis=1)
+            self.df["reads"] = self.df.apply(
+                lambda x: self.readcounts[x["sample"]], axis=1
+            )
         # plot species
         fig = self.plot(self.species_data())
         fig.write_html(os.path.join(self.output, "species_bar.html"))
@@ -107,7 +112,7 @@ class EMU:
         self.assignment["sample"].append(name)
         self.assignment["assigned"].append(stdout[1].split(" ")[-1])
         self.assignment["unassigned"].append(stdout[0].split(" ")[-1])
-    
+
     def count_reads(self, fq: str) -> int:
         """Count the number of reads in a fastq file
 
@@ -159,7 +164,9 @@ class EMU:
             species_df["abundance"] < self.threshold, "species"
         ] = f"Other species <{self.threshold}%"
         species_df = species_df.groupby(["sample", "species"]).sum().reset_index()
-        species_df['reads'] = species_df.apply(lambda x: self.readcounts[x['sample']], axis=1)
+        species_df["reads"] = species_df.apply(
+            lambda x: self.readcounts[x["sample"]], axis=1
+        )
 
         return species_df
 
@@ -173,7 +180,9 @@ class EMU:
             genus_df["abundance"] < self.threshold, "genus"
         ] = f"Other genera <{self.threshold}%"
         genus_df = genus_df.groupby(["sample", "genus"]).sum().reset_index()
-        genus_df['reads'] = genus_df.apply(lambda x: self.readcounts[x['sample']], axis=1)
+        genus_df["reads"] = genus_df.apply(
+            lambda x: self.readcounts[x["sample"]], axis=1
+        )
 
         return genus_df
 
@@ -188,16 +197,15 @@ class EMU:
             labels={"sample": "Sample Name", "abundance": "Relative Abundance (%)"},
         )
         fig = go.Figure(fig)
-        
+
         fig.add_trace(
-    
             go.Scatter(
                 x=df["sample"],
                 y=df["reads"],
                 mode="markers",
                 name="Number of reads",
                 marker=dict(color="red", size=20),
-                yaxis="y2"  # Indicates this should use the secondary y-axis
+                yaxis="y2",  # Indicates this should use the secondary y-axis
             )
         )
         # Update layout to add a secondary y-axis
@@ -208,7 +216,6 @@ class EMU:
                 titlefont=dict(color="red"),
                 overlaying="y",
                 side="right",
-                
-            )
+            ),
         )
         return fig
