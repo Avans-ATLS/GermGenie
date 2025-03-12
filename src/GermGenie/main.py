@@ -5,7 +5,6 @@ import subprocess
 from typing import List, Dict, Tuple
 from plotly import express as px
 from plotly import graph_objects as go
-import gzip
 
 import pandas as pd
 
@@ -230,9 +229,64 @@ def plot_reads_mapped(readstats: ReadMapping) -> Tuple[go.Figure, pd.DataFrame]:
     )
     return fig, stats
 
+def cli() -> argparse.Namespace:
+    parser = argparse.ArgumentParser(
+        "GermGenie",
+        description="EMU wrapper for analyzing and plotting relative abundance from 16S data",
+        epilog="Developed by Daan Brackel & Sander Boden @ ATLS-Avans",
+    )
+    parser.add_argument(
+        "fastq", help="Path to folder containing gzipped fastq files", type=str
+    )
+    parser.add_argument(
+        "output",
+        help="Path to directory to place results (created if not exists.)",
+        type=str,
+    )
+    parser.add_argument(
+        "db", 
+        help="Path to EMU database", 
+        type=str
+        )
+    parser.add_argument(
+        "--threads",
+        "-t",
+        help="Number of threads to use for EMU classification (defaults to 2)",
+        type=int,
+        default=2,
+    )
+    parser.add_argument(
+        "--threshold",
+        "-T",
+        help="Percent abundance threshold. Abundances below threshold will be shown as 'other' (defaults to 1 percent)",
+        type=int,
+        default=1,
+    )
+    parser.add_argument(
+        "--tsv",
+        help="Write abundances to tsv file (abundances.tsv)",
+        action="store_true",
+        default=False,
+    )
+    parser.add_argument(
+        "--nreads",
+        "-nr",
+        action="store_true",
+        default=False,
+        help="Visualize number of reads per sample in barplot",
+    )
+    parser.add_argument( ## BROKEN :(
+        "--subsample",
+        "-s",
+        help="WARNING: DO NOT USE !!!", # Subsample fastq files to a specific number of reads. defaults to None (use all data)",
+        type=int,
+        default=None,
+    )
 
-def main(args: argparse.Namespace) -> None:
+    return parser.parse_args()
 
+def main() -> None:
+    args = cli()
     # instantiate assignments
     readstats = ReadMapping()
 
@@ -287,61 +341,5 @@ def main(args: argparse.Namespace) -> None:
         
     print("Done!")
         
-
-
 if __name__ == "__main__":
-    parser = argparse.ArgumentParser(
-        "GermGenie",
-        description="EMU wrapper for analyzing and plotting relative abundance from 16S data",
-        epilog="Developed by Daan Brackel & Sander Boden @ ATLS-Avans",
-    )
-    parser.add_argument(
-        "fastq", help="Path to folder containing gzipped fastq files", type=str
-    )
-    parser.add_argument(
-        "output",
-        help="Path to directory to place results (created if not exists.)",
-        type=str,
-    )
-    parser.add_argument(
-        "db", 
-        help="Path to EMU database", 
-        type=str
-        )
-    parser.add_argument(
-        "--threads",
-        "-t",
-        help="Number of threads to use for EMU classification (defaults to 2)",
-        type=int,
-        default=2,
-    )
-    parser.add_argument(
-        "--threshold",
-        "-T",
-        help="Percent abundance threshold. Abundances below threshold will be shown as 'other' (defaults to 1 percent)",
-        type=int,
-        default=1,
-    )
-    parser.add_argument(
-        "--tsv",
-        help="Write abundances to tsv file (abundances.tsv)",
-        action="store_true",
-        default=False,
-    )
-    parser.add_argument(
-        "--nreads",
-        "-nr",
-        action="store_true",
-        default=False,
-        help="Visualize number of reads per sample in barplot",
-    )
-    parser.add_argument( ## BROKEN :(
-        "--subsample",
-        "-s",
-        help="WARNING: DO NOT USE !!!", # Subsample fastq files to a specific number of reads. defaults to None (use all data)",
-        type=int,
-        default=None,
-    )
-
-    args = parser.parse_args()
-    main(args)
+    main()
