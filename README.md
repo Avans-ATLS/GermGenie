@@ -1,6 +1,6 @@
 # GermGenie
 
-GermGenie was specifically designed to analyse 16S data from clinical FFPE specimens, however it can be used to analyse any bacterial sample. GermGenie outputs stacked barplot showing the abundance of every species/genus in your sample. By setting an abundance threshold, any species/genus below the threshold will be added to an 'other' category.  
+GermGenie was specifically designed to analyse 16S data from clinical FFPE specimens, however it can be used to analyse any bacterial sample. GermGenie outputs stacked barplot showing the abundance of every species in your sample. By setting an abundance threshold, any species below the threshold will be added to an 'other' category (>1% by default).  
 This tool was designed with Oxford Nanopore sequencing reads (ONT), and was not tested with any other sequencing data. The input should be a folder containing one or more samples in a fastq.gz format.
 
 ## Dependencies
@@ -41,10 +41,9 @@ optional arguments:
                         threshold will be shown as 'other' (defaults to 1
                         percent)
   --tsv                 Write abundances to tsv file (abundances.tsv)
-  --nreads, --nr        Visualize number of reads per sample in barplot
+  --nreads, -nr         Visualize number of reads per sample in barplot
   --subsample SUBSAMPLE, -s SUBSAMPLE
-                        Subsample fastq files to a specific number of reads.
-                        defaults to None (use all data)
+                        WARNING: DO NOT USE !!!
 
 Developed by Daan Brackel & Sander Boden @ ATLS-Avans
 ```
