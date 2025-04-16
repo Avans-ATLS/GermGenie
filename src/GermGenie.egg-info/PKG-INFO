@@ -1,6 +1,6 @@
 Metadata-Version: 2.1
 Name: GermGenie
-Version: 0.1.2
+Version: 0.1.3
 Summary: Python wrapper for multi-sample 16S classification using EMU
 Author-email: Sander Boden <s.boden1@avans.nl>, Daan Brackel <dcj.brackel@student.avans.nl>
 Project-URL: Repository, https://github.com/Avans-ATLS/GermGenie
