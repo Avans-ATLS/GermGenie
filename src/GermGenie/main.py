@@ -282,6 +282,13 @@ def cli() -> argparse.Namespace:
         type=int,
         default=None,
     )
+    
+    parser.add_argument(
+        '--top_n', 
+        '-tn', 
+        type=int, 
+        default=0, 
+        help="Number of top taxa to plot. 0 for all taxa.")
 
     return parser.parse_args()
 
@@ -330,7 +337,12 @@ def main() -> None:
 
     # Parse data
     df = parse_abundances(df, args.threshold, "species")
-
+    if args.top_n > 0:
+        # Filter to top n taxa, group the rest as "other"
+        top_taxa = df.groupby("species")["abundance"].sum().nlargest(args.top_n).index
+        df.loc[~df["species"].isin(top_taxa), "species"] = f"Other species"
+        df = df.groupby(["sample", "species"]).sum().reset_index()
+        
     # Plot data
     fig = plot(df)
     fig.write_html(os.path.join(args.output, "relative_abundances.html"))
