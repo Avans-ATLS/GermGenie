@@ -1,6 +1,6 @@
 [project]
 name = "germgenie"
-version = "0.1.5"
+version = "0.1.6"
 description = "Python wrapper for multi-sample 16S classification using EMU"
 authors = [
     { name = "Sander Boden", email = "s.boden1@avans.nl" },
