@@ -13,6 +13,9 @@ def get_name(fastq: str) -> str:
     """Get the name of a file"""
     return os.path.basename(fastq).split(".")[0]
 
+def filter_empty_files(paths: List[str]) -> List[str]:
+    """Filter out empty files from a list of paths""" 
+    return [f for f in paths if os.path.isfile(f) and os.path.getsize(f) > 0]
 
 def create_output_dirs(output_dir: str, subsample: bool = False) -> str:
     """Create output directories
@@ -303,6 +306,11 @@ def main() -> None:
     # Find input files
     infiles: List[str] = find_input_files(args.fastq)
     print(f'Found {len(infiles)} input files')
+    infiles = filter_empty_files(infiles)
+    print(f'{len(infiles)} files are not empty')
+    if len(infiles) < 1:
+        print("No input files found...")  # TODO: replace with logging
+        os.abort()
 
     # Subsample fastq files
     if args.subsample:
