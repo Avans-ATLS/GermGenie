@@ -344,12 +344,17 @@ def main() -> None:
     df = concatenate_results(emu_dir)
 
     # Parse data
-    df = parse_abundances(df, args.threshold, "species")
     if args.top_n > 0:
-        # Filter to top n taxa, group the rest as "other"
-        top_taxa = df.groupby("species")["abundance"].sum().nlargest(args.top_n).index
-        df.loc[~df["species"].isin(top_taxa), "species"] = f"Other species"
-        df = df.groupby(["sample", "species"]).sum().reset_index()
+        modified_df = pd.DataFrame()
+        for sample in df['sample'].unique():
+            sample_df = df[df['sample'] == sample]
+            top_taxa = sample_df.groupby("species")["abundance"].sum().nlargest(args.top_n).index
+            sample_df.loc[~sample_df["species"].isin(top_taxa), "species"] = f"Other species"
+            modified_df = pd.concat([modified_df, sample_df])
+        df = modified_df.groupby(["sample", "species"]).sum().reset_index()
+        df["abundance"] = df["abundance"].apply(lambda x: x * 100)
+    else:
+        df = parse_abundances(df, args.threshold, "species")
         
     # Plot data
     fig = plot(df)
