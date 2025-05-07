@@ -5,7 +5,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "germgenie"
-version = "0.1.7"
+version = "0.1.8"
 authors = [
     {name="Sander Boden", email="s.boden1@avans.nl"},
     {name="Daan Brackel", email="dcj.brackel@student.avans.nl"},
@@ -31,3 +31,4 @@ GermGenie = "germgenie.main:main"
 [project.urls]
 Repository = "https://github.com/Avans-ATLS/GermGenie"
 Issues = "https://github.com/Avans-ATLS/GermGenie/issues"
+
