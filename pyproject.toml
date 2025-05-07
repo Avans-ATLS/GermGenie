@@ -1,29 +1,33 @@
+[build-system]
+requires = ["setuptools"]
+build-backend = "setuptools.build_meta"
+
+
 [project]
 name = "germgenie"
-version = "0.1.6"
-description = "Python wrapper for multi-sample 16S classification using EMU"
+version = "0.1.7"
 authors = [
-    { name = "Sander Boden", email = "s.boden1@avans.nl" },
-    { name = "Daan Brackel", email = "dcj.brackel@student.avans.nl" },
+    {name="Sander Boden", email="s.boden1@avans.nl"},
+    {name="Daan Brackel", email="dcj.brackel@student.avans.nl"},
 ]
-maintainers = [
-    { name = "Sander Boden", email = "s.boden1@avans.nl" },
-    { name = "Birgit Rijvers", email = "bjm.rijvers@avans.nl" },
-]
-
-license = {text = "MIT"}
+description = "Python wrapper for multi-sample 16S classification using EMU"
 readme = "README.md"
 requires-python = ">=3.7"
 dependencies = [
-    "plotly (==5.18.0)",
-    "osfclient (==0.0.5)",
-    "pandas (==1.3.5)",
-    "biopython (==1.78)"
+    "plotly>=5.18.0", 
+    "osfclient==0.0.5", 
+    "pandas==1.3.5",
+    "biopython==1.78",
 ]
-
-[build-system]
-requires = ["poetry-core>=2.0.0,<3.0.0"]
-build-backend = "poetry.core.masonry.api"
+classifiers = [
+    "Programming Language :: Python :: 3",
+    "License :: OSI Approved :: MIT License",
+    "Operating System :: Unix",
+]
 
 [project.scripts]
 GermGenie = "germgenie.main:main"
+
+[project.urls]
+Repository = "https://github.com/Avans-ATLS/GermGenie"
+Issues = "https://github.com/Avans-ATLS/GermGenie/issues"
