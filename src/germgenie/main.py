@@ -209,8 +209,15 @@ def plot(df: pd.DataFrame) -> go.Figure:
             color="species",
             color_discrete_sequence=px.colors.qualitative.Dark24,
             title=f"Relative Abundances of {(list(df.columns)[1]).capitalize()}",
+            text="species",
             labels={"sample": "Sample Name", "abundance": "Relative Abundance (%)"},
         )
+    )
+
+    # Update layout for fitting labels
+    fig.update_traces(textposition='inside')
+    fig.update_layout(
+        uniformtext_minsize=8, uniformtext_mode='hide'
     )
 
     return fig
@@ -230,13 +237,14 @@ def plot_reads_mapped(readstats: ReadMapping) -> Tuple[go.Figure, pd.DataFrame]:
         title="Read Mapping Statistics",
         labels={"sample": "Sample Name", "reads": "Number of Reads"},
     )
+
     return fig, stats
 
 def cli() -> argparse.Namespace:
     parser = argparse.ArgumentParser(
         "GermGenie",
         description="EMU wrapper for analyzing and plotting relative abundance from 16S data",
-        epilog="Developed by Daan Brackel & Sander Boden @ ATLS-Avans",
+        epilog="Developed by Daan Brackel & Birgit Rijvers & Sander Boden  @ ATLS-Avans",
     )
     parser.add_argument(
         "fastq", help="Path to folder containing gzipped fastq files", type=str
