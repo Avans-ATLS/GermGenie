@@ -359,10 +359,10 @@ def main() -> None:
             sample_df.loc[~sample_df["species"].isin(top_taxa), "species"] = f"Other species"
             modified_df = pd.concat([modified_df, sample_df])
         df = modified_df.groupby(["sample", "species"]).sum().reset_index()
-    else: # if no top_n is specified, use all taxa and apply % abundance threshold     
-        # Parse data
+        df["abundance"] = df["abundance"].apply(lambda x: x * 100)
+    else:
         df = parse_abundances(df, args.threshold, "species")
-    
+        
     # Plot data
     fig = plot(df)
     fig.write_html(os.path.join(args.output, "relative_abundances.html"))
