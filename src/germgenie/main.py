@@ -343,7 +343,6 @@ def main() -> None:
     # Concatenate results
     df = concatenate_results(emu_dir)
 
-    # Parse data
     if args.top_n > 0:
         modified_df = pd.DataFrame()
         for sample in df['sample'].unique():

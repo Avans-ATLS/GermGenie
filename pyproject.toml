@@ -31,4 +31,3 @@ GermGenie = "germgenie.main:main"
 [project.urls]
 Repository = "https://github.com/Avans-ATLS/GermGenie"
 Issues = "https://github.com/Avans-ATLS/GermGenie/issues"
-
