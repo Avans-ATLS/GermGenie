@@ -17,12 +17,13 @@ def filter_empty_files(paths: List[str]) -> List[str]:
     """Filter out empty files from a list of paths""" 
     return [f for f in paths if os.path.isfile(f) and os.path.getsize(f) > 0]
 
-def create_output_dirs(output_dir: str, subsample: bool = False) -> str:
+def create_output_dirs(output_dir: str, subsample: bool = False, qc: bool = False) -> str:
     """Create output directories
 
     Args:
         output_dir (str): Base output directory
         subsample (bool, optional): Create subsample directory. Defaults to False.
+        qc (bool, optional): Create qc directory. Defaults to False.
 
     Returns:
         str: Path to emu directory
@@ -34,6 +35,8 @@ def create_output_dirs(output_dir: str, subsample: bool = False) -> str:
         os.mkdir(emu_dir)
         if subsample:
             os.mkdir(os.path.join(output_dir, "subsample"))
+        if qc:
+            os.mkdir(os.path.join(output_dir, "qc"))
 
     return emu_dir
 
@@ -72,6 +75,62 @@ def subsample_fastq(nreads: int, fastq: str, outdir: str) -> str:
     out: str = os.path.join(outdir, f"{name}_subsampled.fastq.gz")
     pass
 
+def run_chopper(fastq: str, outdir: str, threads = int, min_length: int = None, max_length: int = None, min_quality: int = None) -> str:
+    """Run chopper on a fastq file
+
+    Args:
+        fastq (str): Path to fastq file
+        outdir (str): Path to output directory
+        threads (int): Number of threads to use
+        min_length (int, optional): Minimum length of reads. Defaults to Chopper default.
+        max_length (int, optional): Maximum length of reads. Defaults to Chopper default.
+        min_quality (int, optional): Minimum quality of reads. Defaults to Chopper default.
+
+    Returns:
+        str: Path to chopper output file
+    """
+
+    # Create the output file name
+    name: str = os.path.basename(fastq).split(".")[0]
+    out: str = os.path.join(outdir, f"{name}_QC_pass.fastq.gz")
+
+    # Create the chopper command
+    try:
+        cmd = [
+            "chopper",
+            "--threads",
+            str(threads),
+            "--input",
+            fastq
+        ]
+        # Add optional arguments if they are not None
+        if min_quality is not None:
+            cmd.extend(["--quality", str(min_quality)])
+        if min_length is not None:
+            cmd.extend(["--minlength", str(min_length)])
+        if max_length is not None:
+            cmd.extend(["--maxlength", str(max_length)])
+
+        # Print command for user
+        print(" ".join(cmd))
+        # Print empty line for readability
+        print()
+        # Write output to new file
+        with open(out, "w") as outfile:
+            subprocess.run(
+                cmd,
+                text=True,
+                stdout=outfile,
+                stderr=subprocess.PIPE,
+                check=True,
+            )
+    except subprocess.CalledProcessError as e:
+        print(f"Error QCing {fastq}")  # TODO: replace with logging
+        print(e.stderr)
+        # print(e.stdout)
+        return ""
+
+    return out
 
 def run_emu(fastq: str, db: str, threads: int, output_dir: str) -> str:
     """Run EMU on a fastq file
@@ -102,6 +161,7 @@ def run_emu(fastq: str, db: str, threads: int, output_dir: str) -> str:
             fastq,
         ]
         print(" ".join(cmd))
+        print()
         emu = subprocess.run(
             cmd,
             text=True,
@@ -213,7 +273,6 @@ def plot(df: pd.DataFrame) -> go.Figure:
             labels={"sample": "Sample Name", "abundance": "Relative Abundance (%)"},
         )
     )
-
     # Update layout for fitting labels
     fig.update_traces(textposition='inside')
     fig.update_layout(
@@ -244,7 +303,13 @@ def cli() -> argparse.Namespace:
     parser = argparse.ArgumentParser(
         "GermGenie",
         description="EMU wrapper for analyzing and plotting relative abundance from 16S data",
-        epilog="Developed by Daan Brackel & Birgit Rijvers & Sander Boden  @ ATLS-Avans",
+        epilog="Developed by Daan Brackel & Birgit Rijversss & Sander Boden @ ATLS-Avans",
+    )
+    parser.add_argument(
+        "--version",
+        action="version",
+        version="GermGenie 0.1.9",
+        help="Show program's version number and exit",
     )
     parser.add_argument(
         "fastq", help="Path to folder containing gzipped fastq files", type=str
@@ -292,14 +357,35 @@ def cli() -> argparse.Namespace:
         help="WARNING: DO NOT USE !!!", # Subsample fastq files to a specific number of reads. defaults to None (use all data)",
         type=int,
         default=None,
-    )
-    
+    ) 
     parser.add_argument(
         '--top_n', 
         '-tn', 
         type=int, 
         default=0, 
-        help="Number of top taxa to plot. 0 for all taxa.")
+        help="Number of top taxa to plot. 0 for all taxa."
+    )
+    parser.add_argument(
+        '--min-length',
+        '-mil',
+        type=int,
+        default=None,
+        help="Minimum length of reads to keep. Default is to keep all reads."
+    )
+    parser.add_argument(
+        '--max-length',
+        '-mal',
+        type=int,
+        default=None,
+        help="Maximum length of reads to keep. Default is to keep all reads."
+    )
+    parser.add_argument(
+        '--min-quality',
+        '-miq',
+        type=int,
+        default=None,
+        help="Minimum average Phred quality score of reads to keep. Default is to keep all reads."
+    )
 
     return parser.parse_args()
 
@@ -309,13 +395,17 @@ def main() -> None:
     readstats = ReadMapping()
 
     # Create output directories
-    emu_dir: str = create_output_dirs(args.output, True if args.subsample else False)
-
+    emu_dir: str = create_output_dirs(args.output,
+                                      True if args.subsample else False, 
+                                      True if args.min_length or args.max_length or args.min_quality else False)
+    
     # Find input files
     infiles: List[str] = find_input_files(args.fastq)
     print(f'Found {len(infiles)} input files')
+    print()
     infiles = filter_empty_files(infiles)
     print(f'{len(infiles)} files are not empty')
+    print()
     if len(infiles) < 1:
         print("No input files found...")  # TODO: replace with logging
         os.abort()
@@ -324,6 +414,13 @@ def main() -> None:
     if args.subsample:
         infiles = [
             subsample_fastq(args.subsample, f, os.path.join(args.output, "subsample"))
+            for f in infiles
+        ]
+
+    # Run chopper on fastq files, overwrites raw fastq files
+    if args.min_length or args.max_length or args.min_quality:
+        infiles = [
+            run_chopper(f, os.path.join(args.output, "qc"), args.threads, args.min_length, args.max_length, args.min_quality)
             for f in infiles
         ]
 
