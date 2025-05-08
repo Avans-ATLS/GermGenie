@@ -303,7 +303,7 @@ def cli() -> argparse.Namespace:
     parser = argparse.ArgumentParser(
         "GermGenie",
         description="EMU wrapper for analyzing and plotting relative abundance from 16S data",
-        epilog="Developed by Daan Brackel & Birgit Rijversss & Sander Boden @ ATLS-Avans",
+        epilog="Developed by Daan Brackel, Birgit Rijvers & Sander Boden @ ATLS-Avans",
     )
     parser.add_argument(
         "--version",
@@ -322,7 +322,7 @@ def cli() -> argparse.Namespace:
     parser.add_argument(
         "db", 
         help="Path to EMU database", 
-        type=str
+        type=str,
         )
     parser.add_argument(
         "--threads",
@@ -363,28 +363,28 @@ def cli() -> argparse.Namespace:
         '-tn', 
         type=int, 
         default=0, 
-        help="Number of top taxa to plot. 0 for all taxa."
+        help="Number of top taxa to plot. 0 for all taxa.",
     )
     parser.add_argument(
         '--min-length',
         '-mil',
         type=int,
         default=None,
-        help="Minimum length of reads to keep. Default is to keep all reads."
+        help="Minimum length of reads to keep. Default is to keep all reads.",
     )
     parser.add_argument(
         '--max-length',
         '-mal',
         type=int,
         default=None,
-        help="Maximum length of reads to keep. Default is to keep all reads."
+        help="Maximum length of reads to keep. Default is to keep all reads.",
     )
     parser.add_argument(
         '--min-quality',
         '-miq',
         type=int,
         default=None,
-        help="Minimum average Phred quality score of reads to keep. Default is to keep all reads."
+        help="Minimum average Phred quality score of reads to keep. Default is to keep all reads.",
     )
 
     return parser.parse_args()
