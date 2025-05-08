@@ -75,7 +75,7 @@ def subsample_fastq(nreads: int, fastq: str, outdir: str) -> str:
     out: str = os.path.join(outdir, f"{name}_subsampled.fastq.gz")
     pass
 
-def run_chopper(fastq: str, outdir: str, threads = int, min_length: int = None, max_length: int = None, min_quality: int = None) -> str:
+def run_chopper(fastq: str, outdir: str, threads: int, min_length: int = None, max_length: int = None, min_quality: int = None) -> str:
     """Run chopper on a fastq file
 
     Args:
