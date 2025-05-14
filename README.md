@@ -11,8 +11,9 @@ The pipeline is based on [EMU](https://github.com/treangenlab/emu). Optional QC 
 
 Follow EMU's installation instructions from the [repo](https://github.com/treangenlab/emu).
 If you want to filter based on qualityscores or length, install chopper with the instructions from the [repo](https://github.com/wdecoster/chopper?tab=readme-ov-file#installation)
-After installing EMU, install GermGenie in the same conda environment.
+After installing EMU, install conda dependencies and GermGenie in the same conda environment.
 ```bash
+conda install -c bioconda chopper
 python -m pip install GermGenie
 ```
 
