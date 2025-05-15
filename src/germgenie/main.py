@@ -30,16 +30,27 @@ def create_output_dirs(output_dir: str, subsample: bool = False, qc: bool = Fals
     """
     emu_dir: str = os.path.join(output_dir, "emu")
 
+    # Create output dir if it doesn't exist
     if not os.path.exists(output_dir):
         os.mkdir(output_dir)
+
+    # Create emu dir if it doesn't exist
+    if not os.path.exists(emu_dir):
         os.mkdir(emu_dir)
-        if subsample:
-            os.mkdir(os.path.join(output_dir, "subsample"))
-        if qc:
-            os.mkdir(os.path.join(output_dir, "qc"))
+    
+    # Create the subsample dir if requested
+    if subsample:
+        subsample_dir = os.path.join(output_dir, "subsample")
+        if not os.path.exists(subsample_dir):
+            os.mkdir(subsample_dir)
+
+    # Create the qc dir if requested
+    if qc:
+        qc_dir = os.path.join(output_dir, "qc")
+        if not os.path.exists(qc_dir):
+            os.mkdir(qc_dir)
 
     return emu_dir
-
 
 def find_input_files(input_dir: str) -> List[str]:
     """Find input fastq.gz files in a directory
