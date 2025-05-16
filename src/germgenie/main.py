@@ -123,20 +123,18 @@ def run_chopper(fastq: str, outdir: str, threads: int, min_length: int = None, m
             cmd.extend(["--minlength", str(min_length)])
         if max_length is not None:
             cmd.extend(["--maxlength", str(max_length)])
+        
+        # Add gzip to the command using pipe
+        cmd = " ".join(cmd) + f" | gzip > {out}"
 
         # Print command for user
-        print(" ".join(cmd))
-        # Print empty line for readability
         print()
-        # Write output to new file
-        with open(out, "w") as outfile:
-            subprocess.run(
-                cmd,
-                text=True,
-                stdout=outfile,
-                stderr=subprocess.PIPE,
-                check=True,
-            )
+        print(f"{cmd}")
+        print()
+        
+        # Execute the command
+        subprocess.run(cmd, shell=True, check=True, text=True)
+
     except subprocess.CalledProcessError as e:
         print(f"Error QCing {fastq}")  # TODO: replace with logging
         print(e.stderr)
@@ -173,6 +171,7 @@ def run_emu(fastq: str, db: str, threads: int, output_dir: str) -> str:
             name,
             fastq,
         ]
+        print()
         print(" ".join(cmd))
         print()
         emu = subprocess.run(
