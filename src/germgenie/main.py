@@ -30,16 +30,29 @@ def create_output_dirs(output_dir: str, subsample: bool = False, qc: bool = Fals
     """
     emu_dir: str = os.path.join(output_dir, "emu")
 
-    if not os.path.exists(output_dir):
-        os.mkdir(output_dir)
-        os.mkdir(emu_dir)
-        if subsample:
-            os.mkdir(os.path.join(output_dir, "subsample"))
-        if qc:
-            os.mkdir(os.path.join(output_dir, "qc"))
+    # Stop execution if the output directory already exists
+    if os.path.exists(output_dir):
+        raise FileExistsError(f"Error: Output directory '{output_dir}' already exists. To avoid overwriting, please specify a different directory.")
+
+    # Create output dir if it doesn't exist
+    os.mkdir(output_dir)
+
+    # Create emu dir if it doesn't exist
+    os.mkdir(emu_dir)
+    
+    # Create the subsample dir if requested
+    if subsample:
+        subsample_dir = os.path.join(output_dir, "subsample")
+        if not os.path.exists(subsample_dir):
+            os.mkdir(subsample_dir)
+
+    # Create the qc dir if requested
+    if qc:
+        qc_dir = os.path.join(output_dir, "qc")
+        if not os.path.exists(qc_dir):
+            os.mkdir(qc_dir)
 
     return emu_dir
-
 
 def find_input_files(input_dir: str) -> List[str]:
     """Find input fastq.gz files in a directory
@@ -110,20 +123,18 @@ def run_chopper(fastq: str, outdir: str, threads: int, min_length: int = None, m
             cmd.extend(["--minlength", str(min_length)])
         if max_length is not None:
             cmd.extend(["--maxlength", str(max_length)])
+        
+        # Add gzip to the command using pipe
+        cmd = " ".join(cmd) + f" | gzip > {out}"
 
         # Print command for user
-        print(" ".join(cmd))
-        # Print empty line for readability
         print()
-        # Write output to new file
-        with open(out, "w") as outfile:
-            subprocess.run(
-                cmd,
-                text=True,
-                stdout=outfile,
-                stderr=subprocess.PIPE,
-                check=True,
-            )
+        print(f"{cmd}")
+        print()
+        
+        # Execute the command
+        subprocess.run(cmd, shell=True, check=True, text=True)
+
     except subprocess.CalledProcessError as e:
         print(f"Error QCing {fastq}")  # TODO: replace with logging
         print(e.stderr)
@@ -160,6 +171,7 @@ def run_emu(fastq: str, db: str, threads: int, output_dir: str) -> str:
             name,
             fastq,
         ]
+        print()
         print(" ".join(cmd))
         print()
         emu = subprocess.run(
