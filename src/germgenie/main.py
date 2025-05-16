@@ -30,13 +30,15 @@ def create_output_dirs(output_dir: str, subsample: bool = False, qc: bool = Fals
     """
     emu_dir: str = os.path.join(output_dir, "emu")
 
+    # Stop execution if the output directory already exists
+    if os.path.exists(output_dir):
+        raise FileExistsError(f"Error: Output directory '{output_dir}' already exists. To avoid overwriting, please specify a different directory.")
+
     # Create output dir if it doesn't exist
-    if not os.path.exists(output_dir):
-        os.mkdir(output_dir)
+    os.mkdir(output_dir)
 
     # Create emu dir if it doesn't exist
-    if not os.path.exists(emu_dir):
-        os.mkdir(emu_dir)
+    os.mkdir(emu_dir)
     
     # Create the subsample dir if requested
     if subsample:
