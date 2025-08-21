@@ -2,6 +2,7 @@ import argparse
 import os
 import glob
 import subprocess
+import sys
 from typing import List, Dict, Tuple
 from plotly import express as px
 from plotly import graph_objects as go
@@ -66,9 +67,9 @@ def find_input_files(input_dir: str) -> List[str]:
     # Find all fastq.gz files
     infiles: List[str] = glob.glob(os.path.join(input_dir, "*.gz"))
     if len(infiles) < 1:
-        # If no files are found, abort
+        # If no files are found, exit
         print("No input files found...")  # TODO: replace with logging
-        os.abort()
+        sys.exit()
     else:
         # Return list of files
         return infiles
@@ -84,7 +85,7 @@ def find_and_sort_samplesheet(samplesheet: str) -> pd.DataFrame:
     """
     if not os.path.exists(samplesheet):
         print(f"Samplesheet not found: {samplesheet}")
-        os.abort()
+        sys.exit()
 
     df = pd.read_csv(samplesheet)
 
@@ -327,6 +328,7 @@ def plot_reads_mapped(readstats: ReadMapping, name_map = None, sample_order = No
     # If a mapping is provided, rename the samples
     if name_map:
         stats['sample'] = stats['sample'].map(lambda s: name_map.get(s, s))
+    # Specify categories for correct ordering instead of lexicographically
     if sample_order:
         stats['sample'] = pd.Categorical(stats['sample'], categories=sample_order, ordered=True)
         stats = stats.sort_values('sample')
@@ -458,7 +460,7 @@ def main() -> None:
     print()
     if len(infiles) < 1:
         print("No input files found...")  # TODO: replace with logging
-        os.abort()
+        sys.exit()
 
     # If a samplesheet is provided, sort and rename files
     if args.samplesheet:
