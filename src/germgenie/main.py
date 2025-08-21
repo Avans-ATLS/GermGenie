@@ -3,6 +3,7 @@ import os
 import glob
 import subprocess
 import sys
+from natsort import natsorted 
 from typing import List, Dict, Tuple
 from plotly import express as px
 from plotly import graph_objects as go
@@ -92,10 +93,11 @@ def find_and_sort_samplesheet(samplesheet: str) -> pd.DataFrame:
     if not {'file', 'name'}.issubset(df.columns):
         raise ValueError("Samplesheet must contain 'file' and 'name' columns.")
 
-    df_sorted = df.sort_values('name',
-                                key=lambda col: col.str.lower().str.extract('(\d+)',
-                                expand=False).fillna('0').astype(int) if col.str.contains('\d').any() else col.str.lower())
-    return df_sorted.reset_index(drop=True)
+    # Sort with natsort library
+    df_sorted = df.iloc[natsorted(range(len(df)), 
+                key=lambda i: df['name'].iloc[i].lower())]
+
+    return df_sorted
 
 def subsample_fastq(nreads: int, fastq: str, outdir: str) -> str:
     """Subsample a fastq file
