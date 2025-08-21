@@ -259,7 +259,6 @@ def concatenate_results(output_dir: str, name_map: dict = None) -> pd.DataFrame:
     for file in glob.glob(os.path.join(output_dir, "*abundance.tsv")):
         # Read file and add sample name
         df: pd.DataFrame = pd.read_csv(file, sep="\t", skipfooter=2, engine="python")
-        # df["sample"] = "_".join(get_name(file).split("_")[:-1])
         sample_key = "_".join(get_name(file).split("_")[:-1])
         sample_name = name_map.get(sample_key, sample_key) if name_map else sample_key
         df["sample"] = sample_name
@@ -438,7 +437,7 @@ def cli() -> argparse.Namespace:
         '-ss',
         type=str,
         default=None,
-        help= "Path to samplesheet file, used for renaming and sorting"
+        help= "Path to samplesheet CSV file, used for renaming and sorting"
     )
 
     return parser.parse_args()
@@ -467,7 +466,6 @@ def main() -> None:
     # If a samplesheet is provided, sort and rename files
     if args.samplesheet:
         samplesheet_df = find_and_sort_samplesheet(args.samplesheet)
-        print(samplesheet_df)  # TODO: remove when sorting works
 
         # Create mapping to replace OG file names with string in "name" column
         name_map = dict(zip(
@@ -515,7 +513,6 @@ def main() -> None:
 
     # Plot read mapping statistics
     if args.nreads:
-        # fig, readsdf = plot_reads_mapped(readstats)
         fig, readsdf = plot_reads_mapped(readstats, name_map, sample_order)
         fig.write_html(os.path.join(args.output, "read_mapping.html"))
         # Write to tsv
