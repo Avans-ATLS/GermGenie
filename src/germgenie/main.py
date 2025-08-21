@@ -73,6 +73,29 @@ def find_input_files(input_dir: str) -> List[str]:
         # Return list of files
         return infiles
 
+def find_and_sort_samplesheet(samplesheet: str) -> pd.DataFrame:
+    """Find and sort a samplesheet
+
+    Args:
+        samplesheet (str): Path to samplesheet file
+
+    Returns:
+        pd.DataFrame: Sorted samplesheet
+    """
+    if not os.path.exists(samplesheet):
+        print(f"Samplesheet not found: {samplesheet}")
+        os.abort()
+
+    df = pd.read_csv(samplesheet)
+
+    if not {'file', 'name'}.issubset(df.columns):
+        raise ValueError("Samplesheet must contain 'file' and 'name' columns.")
+
+    df_sorted = df.sort_values('name',
+                                key=lambda col: col.str.lower().str.extract('(\d+)',
+                                expand=False).fillna('0').astype(int) if col.str.contains('\d').any() else col.str.lower())
+    return df_sorted.reset_index(drop=True)
+
 def subsample_fastq(nreads: int, fastq: str, outdir: str) -> str:
     """Subsample a fastq file
 
@@ -429,6 +452,11 @@ def main() -> None:
         print("No input files found...")  # TODO: replace with logging
         os.abort()
 
+    # If a samplesheet is provided, sort and rename files
+    if args.samplesheet:
+        samplesheet_df = find_and_sort_samplesheet(args.samplesheet)
+        print(samplesheet_df)  # TODO: remove when sorting works
+    
     # Subsample fastq files
     if args.subsample:
         infiles = [
