@@ -398,6 +398,13 @@ def cli() -> argparse.Namespace:
         default=None,
         help="Minimum average Phred quality score of reads to keep. Default is to keep all reads.",
     )
+    parser.add_argument(
+        '--samplesheet',
+        '-ss',
+        type=str,
+        default=None,
+        help= "Path to samplesheet file, used for renaming and sorting"
+    )
 
     return parser.parse_args()
 
