@@ -242,7 +242,7 @@ class ReadMapping:
             "unclassified_mapped": self.unclassified_mapped,
         }
 
-def concatenate_results(output_dir: str) -> pd.DataFrame:
+def concatenate_results(output_dir: str, name_map: dict = None) -> pd.DataFrame:
     """Concatenate abundance tsv files, add a column for the sample name
 
     Args:
@@ -256,12 +256,14 @@ def concatenate_results(output_dir: str) -> pd.DataFrame:
     for file in glob.glob(os.path.join(output_dir, "*abundance.tsv")):
         # Read file and add sample name
         df: pd.DataFrame = pd.read_csv(file, sep="\t", skipfooter=2, engine="python")
-        df["sample"] = "_".join(get_name(file).split("_")[:-1])
+        # df["sample"] = "_".join(get_name(file).split("_")[:-1])
+        sample_key = "_".join(get_name(file).split("_")[:-1])
+        sample_name = name_map.get(sample_key, sample_key) if name_map else sample_key
+        df["sample"] = sample_name
         # Append to list
         dfs.append(df)
     # Concatenate all dataframes and return
     return pd.concat(dfs)
-
 
 def parse_abundances(df: pd.DataFrame, threshold: int, level: str) -> pd.DataFrame:
     """Parse abundance data to remove low abundance taxa and group them as 'other'
@@ -317,12 +319,16 @@ def plot(df: pd.DataFrame) -> go.Figure:
     return fig
 
 
-def plot_reads_mapped(readstats: ReadMapping) -> Tuple[go.Figure, pd.DataFrame]:
+def plot_reads_mapped(readstats: ReadMapping, name_map = None) -> Tuple[go.Figure, pd.DataFrame]:
     """Plot number of reads mapped, unmapped, and unclassified"""
     # Create dataframe from readstats object
     stats = pd.DataFrame(readstats.to_dict())
     # Melt dataframe into longform
     stats = stats.melt(id_vars="sample", var_name="status", value_name="reads")
+    # If a mapping is provided, rename the samples
+    if name_map:
+        stats['sample'] = stats['sample'].map(lambda s: name_map.get(s, s))
+    # Create figure
     fig = px.bar(
         stats,
         x="sample",
@@ -456,6 +462,15 @@ def main() -> None:
     if args.samplesheet:
         samplesheet_df = find_and_sort_samplesheet(args.samplesheet)
         print(samplesheet_df)  # TODO: remove when sorting works
+
+        # Create mapping to replace OG file names with string in "name" column
+        name_map = dict(zip(
+            samplesheet_df['file'].apply(lambda x: os.path.basename(x).split('.')[0]),
+            samplesheet_df['name']
+        ))
+    #  If renaming samples is not required, use OG names by passing None
+    else:
+        name_map = None
     
     # Subsample fastq files
     if args.subsample:
@@ -482,7 +497,8 @@ def main() -> None:
 
     # Plot read mapping statistics
     if args.nreads:
-        fig, readsdf = plot_reads_mapped(readstats)
+        # fig, readsdf = plot_reads_mapped(readstats)
+        fig, readsdf = plot_reads_mapped(readstats, name_map)
         fig.write_html(os.path.join(args.output, "read_mapping.html"))
         # Write to tsv
         if args.tsv:
@@ -493,7 +509,8 @@ def main() -> None:
         ).to_csv(os.path.join(args.output, "read_mapping.tsv"), sep="\t")
 
     # Concatenate results
-    df = concatenate_results(emu_dir)
+    # df = concatenate_results(emu_dir)
+    df = concatenate_results(emu_dir, name_map)
 
     if args.top_n > 0:
         modified_df = pd.DataFrame()
