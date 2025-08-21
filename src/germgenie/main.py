@@ -318,8 +318,7 @@ def plot(df: pd.DataFrame) -> go.Figure:
 
     return fig
 
-
-def plot_reads_mapped(readstats: ReadMapping, name_map = None) -> Tuple[go.Figure, pd.DataFrame]:
+def plot_reads_mapped(readstats: ReadMapping, name_map = None, sample_order = None) -> Tuple[go.Figure, pd.DataFrame]:
     """Plot number of reads mapped, unmapped, and unclassified"""
     # Create dataframe from readstats object
     stats = pd.DataFrame(readstats.to_dict())
@@ -328,6 +327,9 @@ def plot_reads_mapped(readstats: ReadMapping, name_map = None) -> Tuple[go.Figur
     # If a mapping is provided, rename the samples
     if name_map:
         stats['sample'] = stats['sample'].map(lambda s: name_map.get(s, s))
+    if sample_order:
+        stats['sample'] = pd.Categorical(stats['sample'], categories=sample_order, ordered=True)
+        stats = stats.sort_values('sample')
     # Create figure
     fig = px.bar(
         stats,
@@ -468,9 +470,14 @@ def main() -> None:
             samplesheet_df['file'].apply(lambda x: os.path.basename(x).split('.')[0]),
             samplesheet_df['name']
         ))
-    #  If renaming samples is not required, use OG names by passing None
+        
+        # Set sample order for plots
+        sample_order = list(samplesheet_df['name'])
+    
+    #  If renaming samples is not required, use OG names and order by passing None
     else:
         name_map = None
+        sample_order = None
     
     # Subsample fastq files
     if args.subsample:
@@ -494,11 +501,18 @@ def main() -> None:
             continue
         else:
             readstats.add(get_name(f), emu_stdout)
+        # Rename output files
+        if name_map:
+            sample_key = get_name(f)
+            sample_name = name_map.get(sample_key, sample_key)
+            for emu_file in glob.glob(os.path.join(emu_dir, f"{sample_key}*")):
+                new_file = emu_file.replace(sample_key, sample_name, 1)
+                os.rename(emu_file, new_file)
 
     # Plot read mapping statistics
     if args.nreads:
         # fig, readsdf = plot_reads_mapped(readstats)
-        fig, readsdf = plot_reads_mapped(readstats, name_map)
+        fig, readsdf = plot_reads_mapped(readstats, name_map, sample_order)
         fig.write_html(os.path.join(args.output, "read_mapping.html"))
         # Write to tsv
         if args.tsv:
@@ -509,7 +523,6 @@ def main() -> None:
         ).to_csv(os.path.join(args.output, "read_mapping.tsv"), sep="\t")
 
     # Concatenate results
-    # df = concatenate_results(emu_dir)
     df = concatenate_results(emu_dir, name_map)
 
     if args.top_n > 0:
