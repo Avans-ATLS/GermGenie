@@ -2,6 +2,8 @@ import argparse
 import os
 import glob
 import subprocess
+import sys
+from natsort import natsorted 
 from typing import List, Dict, Tuple
 from plotly import express as px
 from plotly import graph_objects as go
@@ -66,12 +68,36 @@ def find_input_files(input_dir: str) -> List[str]:
     # Find all fastq.gz files
     infiles: List[str] = glob.glob(os.path.join(input_dir, "*.gz"))
     if len(infiles) < 1:
-        # If no files are found, abort
+        # If no files are found, exit
         print("No input files found...")  # TODO: replace with logging
-        os.abort()
+        sys.exit()
     else:
         # Return list of files
         return infiles
+
+def find_and_sort_samplesheet(samplesheet: str) -> pd.DataFrame:
+    """Find and sort a samplesheet
+
+    Args:
+        samplesheet (str): Path to samplesheet file
+
+    Returns:
+        pd.DataFrame: Sorted samplesheet
+    """
+    if not os.path.exists(samplesheet):
+        print(f"Samplesheet not found: {samplesheet}")
+        sys.exit()
+
+    df = pd.read_csv(samplesheet)
+
+    if not {'file', 'name'}.issubset(df.columns):
+        raise ValueError("Samplesheet must contain 'file' and 'name' columns.")
+
+    # Sort with natsort library
+    df_sorted = df.iloc[natsorted(range(len(df)), 
+                key=lambda i: df['name'].iloc[i].lower())]
+
+    return df_sorted
 
 def subsample_fastq(nreads: int, fastq: str, outdir: str) -> str:
     """Subsample a fastq file
@@ -219,7 +245,7 @@ class ReadMapping:
             "unclassified_mapped": self.unclassified_mapped,
         }
 
-def concatenate_results(output_dir: str) -> pd.DataFrame:
+def concatenate_results(output_dir: str, name_map: dict = None) -> pd.DataFrame:
     """Concatenate abundance tsv files, add a column for the sample name
 
     Args:
@@ -233,12 +259,13 @@ def concatenate_results(output_dir: str) -> pd.DataFrame:
     for file in glob.glob(os.path.join(output_dir, "*abundance.tsv")):
         # Read file and add sample name
         df: pd.DataFrame = pd.read_csv(file, sep="\t", skipfooter=2, engine="python")
-        df["sample"] = "_".join(get_name(file).split("_")[:-1])
+        sample_key = "_".join(get_name(file).split("_")[:-1])
+        sample_name = name_map.get(sample_key, sample_key) if name_map else sample_key
+        df["sample"] = sample_name
         # Append to list
         dfs.append(df)
     # Concatenate all dataframes and return
     return pd.concat(dfs)
-
 
 def parse_abundances(df: pd.DataFrame, threshold: int, level: str) -> pd.DataFrame:
     """Parse abundance data to remove low abundance taxa and group them as 'other'
@@ -293,13 +320,20 @@ def plot(df: pd.DataFrame) -> go.Figure:
 
     return fig
 
-
-def plot_reads_mapped(readstats: ReadMapping) -> Tuple[go.Figure, pd.DataFrame]:
+def plot_reads_mapped(readstats: ReadMapping, name_map = None, sample_order = None) -> Tuple[go.Figure, pd.DataFrame]:
     """Plot number of reads mapped, unmapped, and unclassified"""
     # Create dataframe from readstats object
     stats = pd.DataFrame(readstats.to_dict())
     # Melt dataframe into longform
     stats = stats.melt(id_vars="sample", var_name="status", value_name="reads")
+    # If a mapping is provided, rename the samples
+    if name_map:
+        stats['sample'] = stats['sample'].map(lambda s: name_map.get(s, s))
+    # Specify categories for correct ordering instead of lexicographically
+    if sample_order:
+        stats['sample'] = pd.Categorical(stats['sample'], categories=sample_order, ordered=True)
+        stats = stats.sort_values('sample')
+    # Create figure
     fig = px.bar(
         stats,
         x="sample",
@@ -398,6 +432,13 @@ def cli() -> argparse.Namespace:
         default=None,
         help="Minimum average Phred quality score of reads to keep. Default is to keep all reads.",
     )
+    parser.add_argument(
+        '--samplesheet',
+        '-ss',
+        type=str,
+        default=None,
+        help= "Path to samplesheet CSV file, used for renaming and sorting"
+    )
 
     return parser.parse_args()
 
@@ -420,8 +461,26 @@ def main() -> None:
     print()
     if len(infiles) < 1:
         print("No input files found...")  # TODO: replace with logging
-        os.abort()
+        sys.exit()
 
+    # If a samplesheet is provided, sort and rename files
+    if args.samplesheet:
+        samplesheet_df = find_and_sort_samplesheet(args.samplesheet)
+
+        # Create mapping to replace OG file names with string in "name" column
+        name_map = dict(zip(
+            samplesheet_df['file'].apply(lambda x: os.path.basename(x).split('.')[0]),
+            samplesheet_df['name']
+        ))
+        
+        # Set sample order for plots
+        sample_order = list(samplesheet_df['name'])
+    
+    #  If renaming samples is not required, use OG names and order by passing None
+    else:
+        name_map = None
+        sample_order = None
+    
     # Subsample fastq files
     if args.subsample:
         infiles = [
@@ -444,10 +503,17 @@ def main() -> None:
             continue
         else:
             readstats.add(get_name(f), emu_stdout)
+        # Rename output files
+        if name_map:
+            sample_key = get_name(f)
+            sample_name = name_map.get(sample_key, sample_key)
+            for emu_file in glob.glob(os.path.join(emu_dir, f"{sample_key}*")):
+                new_file = emu_file.replace(sample_key, sample_name, 1)
+                os.rename(emu_file, new_file)
 
     # Plot read mapping statistics
     if args.nreads:
-        fig, readsdf = plot_reads_mapped(readstats)
+        fig, readsdf = plot_reads_mapped(readstats, name_map, sample_order)
         fig.write_html(os.path.join(args.output, "read_mapping.html"))
         # Write to tsv
         if args.tsv:
@@ -458,7 +524,7 @@ def main() -> None:
         ).to_csv(os.path.join(args.output, "read_mapping.tsv"), sep="\t")
 
     # Concatenate results
-    df = concatenate_results(emu_dir)
+    df = concatenate_results(emu_dir, name_map)
 
     if args.top_n > 0:
         modified_df = pd.DataFrame()

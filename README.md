@@ -4,7 +4,11 @@ GermGenie was specifically designed to analyse 16S data from clinical FFPE speci
 This tool was designed with Oxford Nanopore sequencing reads (ONT), and was not tested with any other sequencing data. The input should be a folder containing one or more samples in a fastq.gz format.
 
 ## Dependencies
-The pipeline is based on [EMU](https://github.com/treangenlab/emu). Optional QC is performed with [chopper](https://github.com/wdecoster/chopper). Data is visualized using the [Plotly library](https://plotly.com).
+The pipeline is based on [EMU](https://github.com/treangenlab/emu). 
+
+Optional QC is performed with [chopper](https://github.com/wdecoster/chopper). 
+
+Data is visualized using the [Plotly library](https://plotly.com).
 
 
 # Installation
@@ -22,6 +26,7 @@ python -m pip install GermGenie
 usage: GermGenie [-h] [--version] [--threads THREADS]
                  [--threshold THRESHOLD] [--tsv] [--nreads]
                  [--subsample SUBSAMPLE] [--top_n TOP_N]
+                 [--samplesheet SAMPLESHEET.csv]
                  [--min-length MIN_LENGTH] [--max-length MAX_LENGTH]
                  [--min-quality MIN_QUALITY]
                  fastq output db
@@ -63,7 +68,46 @@ options:
   --min-quality MIN_QUALITY, -miq MIN_QUALITY
                         Minimum average Phred quality score of reads
                         to keep. Default is to keep all reads.
+  --samplesheet SAMPLESHEET, -ss SAMPLESHEET
+                        Path to samplesheet
+                        CSV file, used for
+                        renaming and sorting
 
 Developed by Daan Brackel, Birgit Rijvers & Sander Boden @ ATLS-
 Avans
 ```
+## Optional QC
+To perform QC trimming and filtering, GermGenie uses chopper. This is optional, but GermGenie can:
+* Filter based on read length
+* Filter based on read quality
+
+Use `--min-length` or `-mil` to specify a minimum read length for reads to be kept.
+
+Use `--max-length` or `-mal` to specify a maximum read length for reads to be kept.
+
+Use `--min-quality` or `-miq` to specify a minimum read length for reads to be kept.
+
+>All reads that are filtered out will not be used as input for the taxonomic classification with EMU. 
+
+## Optional sample sorting & renaming
+To sort your samples alphanumerically in the outputs, supply a samplesheet CSV with `--samplesheet` or `-ss`. 
+
+The CSV should have 2 columns with headers "file" and "name", like this:
+
+|file|name| 
+|---|---|
+barcode_01.fastq.gz|barcode01|
+barcode_04.fastq.gz|barcode04|
+barcode_02.fastq.gz|barcode06|
+
+This way, the output will be sorted based on the name column. If you don't want to change the name of your input files, make both columns contain the same.
+
+If you want to rename your files, supply the desired name for each file in the "name" column like in the example below:
+
+|file|name| 
+|---|---|
+barcode_01.fastq.gz|sample1|
+barcode_04.fastq.gz|sample4|
+barcode_02.fastq.gz|sample6|
+
+>If you don't supply a samplesheet, your input files will not be renamed or sorted.
