@@ -12,8 +12,7 @@ Data is visualized using the [Plotly library](https://plotly.com).
 
 
 # Installation
-
-Follow EMU's installation instructions from the [repo](https://github.com/treangenlab/emu).
+Install EMU version 3.5.5 with conda, follow EMU's installation and database instructions from the [repo](https://github.com/treangenlab/emu).
 If you want to filter based on qualityscores or length, install chopper with the instructions from the [repo](https://github.com/wdecoster/chopper?tab=readme-ov-file#installation)
 After installing EMU, install conda dependencies and GermGenie in the same conda environment.
 ```bash
